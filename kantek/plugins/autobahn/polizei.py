@@ -101,8 +101,8 @@ async def _banuser(event, chat, userid, bancmd, ban_type, ban_reason):
             await asyncio.sleep(0.25)
     await client.gban(userid, formatted_reason)
 
-    message_count = len(await client.get_messages(chat, from_user=userid, limit=10))
-    if message_count <= 5:
+    messages = await client.get_messages(chat, from_user=userid, limit=0)
+    if messages.total <= 5:
         await client(DeleteUserHistoryRequest(chat, userid))
 
 
