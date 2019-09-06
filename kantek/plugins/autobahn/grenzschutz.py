@@ -8,9 +8,10 @@ from telethon.errors import UserIdInvalidError
 from telethon.events import ChatAction, NewMessage
 from telethon.tl.types import Channel
 
-from database.arango import ArangoDB
+from database.mysql import MySQLDB
 from utils.client import KantekClient
-from utils.mdtex import Bold, Code, KeyValueItem, MDTeXDocument, Mention, Section
+from utils.mdtex import (Bold, Code, KeyValueItem, MDTeXDocument, Mention,
+                         Section)
 
 __version__ = '0.1.1'
 
@@ -31,9 +32,9 @@ async def grenzschutz(event: Union[ChatAction.Event, NewMessage.Event]) -> None:
     if chat.admin_rights:
         if not chat.admin_rights.ban_users:
             return
-    db: ArangoDB = client.db
+    db: MySQLDB = client.db
     chat_document = db.groups.get_chat(event.chat_id)
-    db_named_tags: Dict = chat_document['named_tags'].getStore()
+    db_named_tags: Dict = chat_document['named_tags']
     polizei_tag = db_named_tags.get('polizei')
     grenzschutz_tag = db_named_tags.get('grenzschutz')
     silent = grenzschutz_tag == 'silent'
@@ -53,13 +54,15 @@ async def grenzschutz(event: Union[ChatAction.Event, NewMessage.Event]) -> None:
     except ValueError as err:
         logger.error(err)
 
-    result = db.query('For doc in BanList '
-                      'FILTER doc._key == @id '
-                      'RETURN doc', bind_vars={'id': str(uid)})
+    with db.cursor() as cursor:
+        sql = 'select * from `banlist` where `id` = %s'
+        cursor.execute(sql, (uid,))
+        result = cursor.findone()
+
     if not result:
         return
     else:
-        ban_reason = result[0]['reason']
+        ban_reason = result['reason']
     try:
         await client.ban(chat, uid)
     except UserIdInvalidError as err:

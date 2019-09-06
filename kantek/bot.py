@@ -5,7 +5,7 @@ import os
 import logzero
 
 import config
-from database.arango import ArangoDB
+from database.mysql import MySQLDB
 from utils.client import KantekClient
 from utils.loghandler import TGChannelLogHandler
 from utils.pluginmgr import PluginManager
@@ -31,7 +31,7 @@ def main() -> None:
     client.kantek_version = __version__
     client.plugin_mgr = PluginManager(client)
     logger.info('Connecting to Database')
-    client.db = ArangoDB()
+    client.db = MySQLDB()
     client.plugin_mgr.register_all()
     tlog.info('Started kantek v%s', __version__)
     logger.info('Started kantek v%s', __version__)

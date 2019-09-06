@@ -5,17 +5,17 @@ import os
 import re
 
 import logzero
-from pyArango.document import Document
 from telethon import events
 from telethon.errors import MessageIdInvalidError
 from telethon.events import NewMessage
 from telethon.tl.custom import Message
 
 from config import cmd_prefix
-from database.arango import ArangoDB
-from utils import helpers, parsers, constants
+from database.mysql import MySQLDB
+from utils import constants, helpers, parsers
 from utils.client import KantekClient
-from utils.mdtex import Bold, Code, KeyValueItem, MDTeXDocument, Pre, Section, SubSection
+from utils.mdtex import (Bold, Code, KeyValueItem, MDTeXDocument, Pre, Section,
+                         SubSection)
 
 __version__ = '0.2.1'
 
@@ -40,7 +40,7 @@ async def autobahn(event: NewMessage.Event) -> None:
     """Command to manage autobahn blacklists"""
     client: KantekClient = event.client
     msg: Message = event.message
-    db: ArangoDB = client.db
+    db: MySQLDB = client.db
     args = msg.raw_text.split()[1:]
 
     response = ''
@@ -73,7 +73,7 @@ async def _file_callback(received: int, total: int, msg: Message) -> None:
         logger.error(err)
 
 
-async def _add_string(event: NewMessage.Event, db: ArangoDB) -> MDTeXDocument:
+async def _add_string(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
     """Add a string to the Collection of its type"""
     client: KantekClient = event.client
     msg: Message = event.message
@@ -112,7 +112,7 @@ async def _add_string(event: NewMessage.Event, db: ArangoDB) -> MDTeXDocument:
             skipped_items.append(string)
             continue
 
-        existing_one = collection.fetchByExample({'string': string}, batchSize=1)
+        existing_one = collection.get_string(string)
 
         if not existing_one:
             collection.add_string(string)
@@ -131,7 +131,7 @@ async def _add_string(event: NewMessage.Event, db: ArangoDB) -> MDTeXDocument:
                 file_hash = await helpers.hash_file(dl_filename)
                 os.remove(dl_filename)
                 await msg.delete()
-                existing_one = collection.fetchByExample({'string': file_hash}, batchSize=1)
+                existing_one = collection.get_string(file_hash)
 
                 short_hash = f'{file_hash[:15]}[...]'
                 if not existing_one:
@@ -156,7 +156,7 @@ async def _add_string(event: NewMessage.Event, db: ArangoDB) -> MDTeXDocument:
                          )
 
 
-async def _del_string(event: NewMessage.Event, db: ArangoDB) -> MDTeXDocument:
+async def _del_string(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
     """Add a string to the Collection of its type"""
     msg: Message = event.message
     args = msg.raw_text.split()[2:]
@@ -174,9 +174,9 @@ async def _del_string(event: NewMessage.Event, db: ArangoDB) -> MDTeXDocument:
             link_creator, chat_id, random_part = await helpers.resolve_invite_link(string)
             string = chat_id
 
-        existing_one: Document = collection.fetchFirstExample({'string': string})
+        existing_one = collection.get_string(string)
         if existing_one:
-            existing_one[0].delete()
+            collection.delete_string(string)
             removed_items.append(string)
 
     return MDTeXDocument(Section(Bold('Deleted Items:'),
@@ -184,7 +184,7 @@ async def _del_string(event: NewMessage.Event, db: ArangoDB) -> MDTeXDocument:
                                             *removed_items)))
 
 
-async def _query_string(event: NewMessage.Event, db: ArangoDB) -> MDTeXDocument:
+async def _query_string(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
     """Add a string to the Collection of its type"""
     msg: Message = event.message
     args = msg.raw_text.split()[2:]
@@ -202,9 +202,9 @@ async def _query_string(event: NewMessage.Event, db: ArangoDB) -> MDTeXDocument:
         hex_type = AUTOBAHN_TYPES.get(string_type)
         collection = db.ab_collection_map[hex_type]
     if code is None:
-        all_strings = collection.fetchAll()
+        all_strings = collection.get_all()
         if not len(all_strings) > 100:
-            items = [KeyValueItem(Bold(f'0x{doc["_key"]}'.rjust(5)),
+            items = [KeyValueItem(Bold(f'0x{doc["id"]}'.rjust(5)),
                                   Code(doc['string'])) for doc in all_strings]
         else:
             items = [Pre(', '.join([doc['string'] for doc in all_strings]))]
@@ -215,13 +215,13 @@ async def _query_string(event: NewMessage.Event, db: ArangoDB) -> MDTeXDocument:
             string = collection.fetchDocument(code).getStore()['string']
             return MDTeXDocument(Section(Bold(f'Items for type: {string_type}[{hex_type}] code: {code}'), Code(string)))
         elif isinstance(code, range) or isinstance(code, list):
-            keys = [str(i) for i in code]
-            documents = db.query(f'FOR doc IN @@collection '
-                                 'FILTER doc._key in @keys '
-                                 'RETURN doc',
-                                 bind_vars={'@collection': collection.name,
-                                            'keys': keys})
-            items = [KeyValueItem(Bold(f'0x{doc["_key"]}'.rjust(5)),
-                                  Code(doc['string'])) for doc in documents]
-            return MDTeXDocument(
-                Section(Bold(f'Items for for type: {string_type}[{hex_type}]'), *items))
+            with db.cursor() as cursor:
+                keys = [int(i) for i in code]
+                sql = 'select * from `{}` where `id` in ({})'.format(
+                    collection.name, ','.join(keys))
+                cursor.execute(sql)
+                documents = cursor.fetchall()
+                items = [KeyValueItem(Bold(f'0x{doc["id"]}'.rjust(5)),
+                                      Code(doc['string'])) for doc in documents]
+                return MDTeXDocument(
+                    Section(Bold(f'Items for for type: {string_type}[{hex_type}]'), *items))

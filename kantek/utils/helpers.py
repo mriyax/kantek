@@ -43,7 +43,7 @@ async def get_args(event: NewMessage.Event) -> Tuple[Dict[str, str], List[str]]:
 
 
 async def rose_csv_to_dict(filename: str) -> List[Dict[str, str]]:
-    """Convert a fedban list from Rose to a json that can be imported into ArangoDB
+    """Convert a fedban list from Rose to a json that can be imported into MySQLDB
 
     Args:
         filename: The name of the csv
@@ -59,7 +59,7 @@ async def rose_csv_to_dict(filename: str) -> List[Dict[str, str]]:
         for line in csv_file:
             _id = line[0]
             reason = line[-1]
-            bans.append({'_key': _id, 'id': _id, 'reason': reason})
+            bans.append({'id': _id, 'reason': reason})
     return bans
 
 

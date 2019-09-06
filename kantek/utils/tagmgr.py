@@ -1,6 +1,6 @@
+import json
 from typing import Optional, Union
 
-from pyArango.document import DocumentStore
 from telethon.events import NewMessage
 
 from utils.client import KantekClient
@@ -15,9 +15,8 @@ class TagManager:
         self._db = self._client.db
         self.chat_id = event.chat_id
         self._collection = self._db.groups
-        self._document = self._collection[self.chat_id]
-        self._named_tags: DocumentStore = self._document['named_tags']
-        self.named_tags = self._document['named_tags'].getStore()
+        self._document = self._collection.get_chat(self.chat_id)
+        self.named_tags = self._document['named_tags']
         self.tags = self._document['tags']
 
     def get_tag(self, tag_name: TagName) -> Optional[TagValue]:
@@ -60,9 +59,9 @@ class TagManager:
 
     def clear(self) -> None:
         """Clears all tags that a Chat has."""
-        self._document['named_tags'] = {}
-        self._document['tags'] = []
-        self._document.save()
+        self.named_tags = {}
+        self.tags = []
+        self._save()
 
     def del_tag(self, tag_name: TagName) -> None:
         """Delete a tag.
@@ -83,6 +82,11 @@ class TagManager:
         self.del_tag(key)
 
     def _save(self):
-        self._document['tags'] = self.tags
-        self._document['named_tags'] = self.named_tags
-        self._document.save()
+        tags = json.dumps(self.tags)
+        named_tags = json.dumps(self.named_tags)
+
+        with self._db.cursor() as cursor:
+            sql = 'update `chats` set `tags` = %s, `named_tags` = %s where `id` = %s'
+            cursor.execute(sql, (tags, named_tags, self.chat_id))
+
+        self._db.commit()

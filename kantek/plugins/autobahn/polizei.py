@@ -8,7 +8,6 @@ import uuid
 from typing import Dict
 
 import logzero
-from pyArango.theExceptions import DocumentNotFoundError
 from telethon import events
 from telethon.events import ChatAction, NewMessage
 from telethon.tl.custom import Message
@@ -19,7 +18,7 @@ from telethon.tl.types import (Channel, ChatBannedRights,
                                MessageEntityTextUrl, UserFull, MessageEntityUrl,
                                MessageEntityMention)
 
-from database.arango import ArangoDB
+from database.mysql import MySQLDB
 from utils import helpers, constants
 from utils.client import KantekClient
 
@@ -35,9 +34,9 @@ async def polizei(event: NewMessage.Event) -> None:
     """Plugin to automatically ban users for certain messages."""
     client: KantekClient = event.client
     chat: Channel = await event.get_chat()
-    db: ArangoDB = client.db
+    db: MySQLDB = client.db
     chat_document = db.groups.get_chat(event.chat_id)
-    db_named_tags: Dict = chat_document['named_tags'].getStore()
+    db_named_tags: Dict = chat_document['named_tags']
     bancmd = db_named_tags.get('gbancmd')
     polizei_tag = db_named_tags.get('polizei')
     if polizei_tag == 'exclude':
@@ -52,9 +51,9 @@ async def biopolizei(event: ChatAction.Event) -> None:
     """Plugin to ban users with blacklisted strings in their bio."""
     client: KantekClient = event.client
     chat: Channel = await event.get_chat()
-    db: ArangoDB = client.db
+    db: MySQLDB = client.db
     chat_document = db.groups.get_chat(event.chat_id)
-    db_named_tags: Dict = chat_document['named_tags'].getStore()
+    db_named_tags: Dict = chat_document['named_tags']
     bancmd = db_named_tags.get('gbancmd')
     polizei_tag = db_named_tags.get('polizei')
     if polizei_tag == 'exclude':
@@ -77,16 +76,18 @@ async def biopolizei(event: ChatAction.Event) -> None:
 async def _banuser(event, chat, userid, bancmd, ban_type, ban_reason):
     formatted_reason = f'Spambot[kv2 {ban_type} 0x{ban_reason.rjust(4, "0")}]'
     client: KantekClient = event.client
-    db: ArangoDB = client.db
+    db: MySQLDB = client.db
     chat: Channel = await event.get_chat()
     await event.delete()
-    try:
-        old_ban_reason = db.banlist[userid]['reason']
-        if old_ban_reason == formatted_reason:
+
+    with db.cursor() as cursor:
+        sql = 'select count(*) as count from `banlist` where `id` = %s and `ban_reason` = %s'
+        cursor.execute(sql, (userid, formatted_reason))
+        count = cursor.findone()['count']
+        if count > 0:
             logger.info(f'User ID `{userid}` already banned for the same reason.')
             return
-    except DocumentNotFoundError:
-        pass
+
     if chat.creator or chat.admin_rights:
         if bancmd == 'manual':
             await client(EditBannedRequest(
@@ -127,7 +128,7 @@ async def _check_message(event):
         if msg.text and msg.text.startswith(cmd):
             return False, False
 
-    db: ArangoDB = client.db
+    db: MySQLDB = client.db
     string_blacklist = db.ab_string_blacklist.get_all()
     channel_blacklist = db.ab_channel_blacklist.get_all()
     domain_blacklist = db.ab_domain_blacklist.get_all()

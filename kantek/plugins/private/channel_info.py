@@ -59,7 +59,7 @@ async def info(event: NewMessage.Event) -> None:
                          KeyValueItem(Bold('deleted_accounts'), Code(deleted_accounts)))
 
     chat_document = client.db.groups.get_chat(event.chat_id)
-    db_named_tags: Dict = chat_document['named_tags'].getStore()
+    db_named_tags: Dict = chat_document['named_tags']
     db_tags: List = chat_document['tags']
     data = []
     data += [KeyValueItem(Bold(key), value) for key, value in db_named_tags.items()]

@@ -13,7 +13,7 @@ from telethon.tl.functions.channels import EditBannedRequest
 from telethon.tl.types import ChatBannedRights
 
 import config
-from database.arango import ArangoDB
+from database.mysql import MySQLDB
 from utils.mdtex import FormattedBase, MDTeXDocument, Section
 from utils.pluginmgr import PluginManager
 from utils.strafregister import Strafregister
@@ -24,7 +24,7 @@ logger: logging.Logger = logzero.logger
 class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
     """Custom telethon client that has the plugin manager as attribute."""
     plugin_mgr: Optional[PluginManager] = None
-    db: Optional[ArangoDB] = None
+    db: Optional[MySQLDB] = None
     kantek_version: str = ''
     sr = Strafregister(config.strafregister_file)
 
@@ -76,18 +76,20 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
         await self.send_read_acknowledge(config.gban_group,
                                          max_id=1000000,
                                          clear_mentions=True)
-        data = {'_key': str(uid),
-                'id': str(uid),
-                'reason': reason}
-        user = self.db.query('For doc in BanList '
-                             'FILTER doc._key == @uid '
-                             'RETURN doc', bind_vars={'uid': str(uid)})
-        if user and "Spambot" in user[0]['reason'] and "Spambot" not in reason:
-            return False
-        self.db.query('UPSERT {"_key": @ban.id} '
-                      'INSERT @ban '
-                      'UPDATE {"reason": @ban.reason} '
-                      'IN BanList ', bind_vars={'ban': data})
+
+        with self.db.cursor() as cursor:
+            sql = 'select * from `banlist` where `id` = %s'
+            cursor.execute(sql, (uid,))
+            user = cursor.fetchone()
+
+            if user and "Spambot" in user[0]['reason'] and "Spambot" not in reason:
+                return False
+
+            sql = 'insert into `banlist` (`id`, `ban_reason`) values (%s, %s)'\
+                  'on duplicate key update `ban_reason` = %s'
+            cursor.execute(sql, (uid, reason, reason))
+
+        self.db.commit()
 
     async def ungban(self, uid: Union[int, str], fedban: bool = True):
         """Command to gban a user
@@ -115,8 +117,11 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
                                          max_id=1000000,
                                          clear_mentions=True)
 
-        self.db.query('REMOVE {"_key": @uid} '
-                      'IN BanList', bind_vars={'uid': str(uid)})
+        with self.db.cursor() as cursor:
+            sql = 'delete from `banlist` where `id` = %s'
+            cursor.execute(sql, (uid,))
+
+        self.db.commit()
 
     async def ban(self, chat, uid):
         """Bans a user from a chat."""

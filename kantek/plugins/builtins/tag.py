@@ -8,7 +8,7 @@ from telethon.tl.custom import Message
 from telethon.tl.types import Chat, Message
 
 from config import cmd_prefix
-from database.arango import ArangoDB
+from database.mysql import MySQLDB
 from utils import parsers
 from utils.client import KantekClient
 from utils.mdtex import Bold, Code, Item, KeyValueItem, Section
@@ -31,7 +31,7 @@ async def tag(event: NewMessage.Event) -> None:
     """
     chat: Chat = event.chat
     client: KantekClient = event.client
-    db: ArangoDB = client.db
+    db: MySQLDB = client.db
     msg: Message = event.message
     tag_mgr = TagManager(event)
     args = msg.raw_text.split()[1:]

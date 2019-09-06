@@ -33,7 +33,7 @@ async def gban(event: NewMessage.Event) -> None:
     keyword_args, args = await helpers.get_args(event)
     fban = keyword_args.get('fban', True)
     chat_document = client.db.groups.get_chat(event.chat_id)
-    db_named_tags: Dict = chat_document['named_tags'].getStore()
+    db_named_tags: Dict = chat_document['named_tags']
     gban = db_named_tags.get('gban')
     verbose = False
     if gban == 'verbose' or event.is_private:
