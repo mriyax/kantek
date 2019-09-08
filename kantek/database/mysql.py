@@ -44,7 +44,11 @@ class Chats:
         with self.db.cursor() as cursor:
             sql = 'select * from `{}` where `id` = %s'.format(self.name)
             cursor.execute(sql, (chat_id,))
-            return cursor.fetchone()
+
+            chat = cursor.fetchone()
+            chat['tags'] = json.loads(chat['tags'])
+            chat['named_tags'] = json.loads(chat['named_tags'])
+            return chat
 
     def get_chat(self, chat_id: int) -> Dict:
         """Return a Chat document
