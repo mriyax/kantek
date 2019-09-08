@@ -82,7 +82,7 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
             cursor.execute(sql, (uid,))
             user = cursor.fetchone()
 
-            if user and "Spambot" in user[0]['reason'] and "Spambot" not in reason:
+            if user and "Spambot" in user['reason'] and "Spambot" not in reason:
                 return False
 
             sql = 'insert into `banlist` (`id`, `ban_reason`) values (%s, %s)'\
