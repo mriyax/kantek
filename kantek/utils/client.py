@@ -73,9 +73,6 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
                 config.gban_group,
                 f'/fban {uid} {reason}')
         await asyncio.sleep(0.5)
-        await self.send_read_acknowledge(config.gban_group,
-                                         max_id=1000000,
-                                         clear_mentions=True)
 
         with self.db.cursor() as cursor:
             sql = 'select * from `banlist` where `id` = %s'
@@ -113,9 +110,6 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
                 config.gban_group,
                 f'/unfban {uid}')
         await asyncio.sleep(0.5)
-        await self.send_read_acknowledge(config.gban_group,
-                                         max_id=1000000,
-                                         clear_mentions=True)
 
         with self.db.cursor() as cursor:
             sql = 'delete from `banlist` where `id` = %s'

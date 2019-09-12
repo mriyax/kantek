@@ -1,6 +1,10 @@
 """Main bot module. Setup logging, register components"""
+import asyncio
 import logging
 import os
+import sys
+from argparse import ArgumentParser
+from typing import List
 
 import logzero
 
@@ -21,22 +25,64 @@ tlog.setLevel(logging.INFO)
 __version__ = '0.3.1'
 
 
-def main() -> None:
-    """Register logger and components."""
+async def create_client(session_name, *, login=False, phone_number=None) -> KantekClient:
+    """Create a kantek client."""
     client = KantekClient(
-        os.path.abspath(config.session_name),
+        session_name,
         config.api_id,
         config.api_hash)
-    client.start(config.phone)
-    client.kantek_version = __version__
-    client.plugin_mgr = PluginManager(client)
-    logger.info('Connecting to Database')
-    client.db = MySQLDB()
-    client.plugin_mgr.register_all()
+
+    if login:
+        await client.start(phone_number)
+    else:
+        await client.start()
+        client.kantek_version = __version__
+        client.plugin_mgr = PluginManager(client)
+        client.db = MySQLDB()
+        client.plugin_mgr.register_all()
+
+    return client
+
+
+async def main() -> List[KantekClient]:
+    """Register logger and components."""
+    loop = asyncio.get_event_loop()
+    session_path = os.path.relpath(config.session_path)
+    parser = ArgumentParser()
+    parser.add_argument('-l', '--login', nargs=2, metavar=('name', 'number'),
+                        help='Create a new Telegram session')
+    args = parser.parse_args(sys.argv[1:])
+
+    if args.login:
+        name, phone_number = args.login
+        client = await create_client(f'{session_path}/{name}',
+                                     login=True, phone_number=phone_number)
+        await client.disconnect()
+        return
+
+    clients = []
+
+    for _, __, files in os.walk(session_path):
+        for file in files:
+            if file.endswith('.session'):
+                session_name = f'{session_path}/{file[:-len(".session")]}'
+                client = await create_client(session_name)
+                clients.append(client)
+
     tlog.info('Started kantek v%s', __version__)
     logger.info('Started kantek v%s', __version__)
-    client.run_until_disconnected()
+
+    return clients
 
 
 if __name__ == '__main__':
-    main()
+    loop = asyncio.get_event_loop()
+    clients = loop.run_until_complete(main())
+
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt:
+        loop.run_until_complete(asyncio.wait([
+            client.disconnect()
+            for client in clients
+        ]))
