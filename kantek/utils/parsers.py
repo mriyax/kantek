@@ -2,7 +2,7 @@
 import re
 from typing import Dict, List, Pattern, Tuple, Union
 
-KEYWORD_ARGUMENT: Pattern = re.compile(r'(\S+):\s?(\[.+?\]|\".+\"|[\w-]\S+)')
+KEYWORD_ARGUMENT: Pattern = re.compile(r'(\S+):\s?(\[.+?\]|\".+\"|[\w-]\S*)')
 QUOTED_ARGUMENT: Pattern = re.compile(r'(?:\")(.*?)(?:\")')
 RANGE_PATTERN: Pattern = re.compile(r'-?\d+\.\.-?\d+')
 BOOL_MAP = {
