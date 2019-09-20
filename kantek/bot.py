@@ -1,10 +1,10 @@
 """Main bot module. Setup logging, register components"""
 import asyncio
+import concurrent
 import logging
 import os
 import sys
 from argparse import ArgumentParser
-from typing import List
 
 import logzero
 
@@ -44,9 +44,8 @@ async def create_client(session_name, *, login=False, phone_number=None) -> Kant
     return client
 
 
-async def main() -> List[KantekClient]:
+async def main() -> None:
     """Register logger and components."""
-    loop = asyncio.get_event_loop()
     session_path = os.path.relpath(config.session_path)
     parser = ArgumentParser()
     parser.add_argument('-l', '--login', nargs=2, metavar=('name', 'number'),
@@ -72,17 +71,13 @@ async def main() -> List[KantekClient]:
     tlog.info('Started kantek v%s', __version__)
     logger.info('Started kantek v%s', __version__)
 
-    return clients
+    await asyncio.wait([client.run_until_disconnected() for client in clients],
+                       return_when=concurrent.futures.FIRST_COMPLETED)
+
+    for client in clients:
+        await client.disconnect()
 
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    clients = loop.run_until_complete(main())
-
-    try:
-        loop.run_forever()
-    except KeyboardInterrupt:
-        loop.run_until_complete(asyncio.wait([
-            client.disconnect()
-            for client in clients
-        ]))
+    loop.run_until_complete(main())
