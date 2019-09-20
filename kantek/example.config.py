@@ -1,11 +1,10 @@
 """File containing the settings for kantek."""
-import os
-from typing import Union, List
+from typing import List, Union
 
 api_id: Union[str, int] = ''
 api_hash: str = ''
 phone: str = ''
-session_name: str = f'sessions/{os.environ.get("KANTEK_SESSION", "kantek-session")}'
+session_path: str = f'sessions/'
 
 log_bot_token: str = ''
 log_channel_id: Union[str, int] = ''
@@ -18,7 +17,7 @@ cmd_prefix: str = r'\.'
 db_username = 'kantek'
 db_name = 'kantek'
 db_password = 'PASSWORD'
-db_host = 'http://127.0.0.1:8529'
+db_host = 'localhost'
 
 # Optional
 # if these options are empty the feature will be disabled.
