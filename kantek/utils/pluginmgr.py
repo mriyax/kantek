@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from importlib._bootstrap import ModuleSpec
 from importlib._bootstrap_external import SourceFileLoader
 from logging import Logger
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import logzero
 from telethon import TelegramClient
@@ -59,10 +59,11 @@ class Plugin:
 
 class PluginManager:
     """Mange loading and unloading of plugins."""
-    active_plugins: List[Plugin] = []
+    active_plugins: Optional[List[Plugin]] = None
 
     def __init__(self, client: TelegramClient) -> None:
         self.client = client
+        self.active_plugins: List[Plugin] = []
         self.plugin_path: str = os.path.abspath('./plugins')
 
     def register_all(self) -> List[Plugin]:
