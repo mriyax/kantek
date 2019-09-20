@@ -212,8 +212,11 @@ async def _query_string(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
 
     elif hex_type is not None and code is not None:
         if isinstance(code, int):
-            string = collection.fetchDocument(code).getStore()['string']
-            return MDTeXDocument(Section(Bold(f'Items for type: {string_type}[{hex_type}] code: {code}'), Code(string)))
+            with db.cursor() as cursor:
+                sql = 'select * from `{}` where `id` = %s'.format(collection.name)
+                cursor.execute(sql, (code,))
+                string = cursor.fetchone()['string']
+                return MDTeXDocument(Section(Bold(f'Items for type: {string_type}[{hex_type}] code: {code}'), Code(string)))
         elif isinstance(code, range) or isinstance(code, list):
             with db.cursor() as cursor:
                 keys = [int(i) for i in code]
