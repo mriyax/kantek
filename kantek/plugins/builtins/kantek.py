@@ -26,10 +26,12 @@ async def tag(event: NewMessage.Event) -> None:
 
     """
     client: KantekClient = event.client
-    await client.respond(event, MDTeXDocument(
+    message = MDTeXDocument(
         Section(f"{Bold('kantek')} userbot",
                 KeyValueItem(Bold('source'), 'github.com/YouTwitFace/kantek'),
                 KeyValueItem(Bold('version'), client.kantek_version),
                 KeyValueItem(Bold('telethon version'), telethon.__version__),
                 KeyValueItem(Bold('python version'), platform.python_version()),
-                KeyValueItem(Bold('plugins loaded'), len(client.plugin_mgr.active_plugins)))))
+                KeyValueItem(Bold('plugins loaded'), len(client.plugin_mgr.active_plugins))))
+
+    await client.respond(event, message, link_preview=False)

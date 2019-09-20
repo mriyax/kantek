@@ -32,7 +32,7 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
 
     async def respond(self, event: NewMessage.Event,
                       msg: Union[str, FormattedBase, Section, MDTeXDocument],
-                      reply: bool = True) -> Message:
+                      reply: bool = True, link_preview: bool = True) -> Message:
         """Respond to the message an event caused or to the message that was replied to
 
         Args:
@@ -45,9 +45,9 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
         """
         msg = str(msg)
         if reply:
-            return await event.respond(msg, reply_to=(event.reply_to_msg_id or event.message.id))
+            return await event.respond(msg, reply_to=(event.reply_to_msg_id or event.message.id), link_preview=link_preview)
         else:
-            return await event.respond(msg, reply_to=event.message.id)
+            return await event.respond(msg, reply_to=event.message.id, link_preview=link_preview)
 
     async def gban(self, uid: Union[int, str], reason: str):
         """Command to gban a user
