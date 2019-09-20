@@ -53,7 +53,6 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
         Args:
             uid: User ID
             reason: Ban reason
-            fedban: If /fban should be used
 
         Returns: None
 
@@ -65,13 +64,10 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
         await self.send_message(
             config.gban_group,
             f'<a href="tg://user?id={uid}">{uid}</a>', parse_mode='html')
-        await self.send_message(
-            config.gban_group,
-            f'/ban {uid} {reason}')
-        if fedban:
+        for message in config.gban_messages:
             await self.send_message(
                 config.gban_group,
-                f'/fban {uid} {reason}')
+                message.format(uid=uid, reason=reason))
         await asyncio.sleep(0.5)
 
         with self.db.cursor() as cursor:
@@ -93,7 +89,6 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
 
         Args:
             uid: User ID
-            fedban: If /unfban should be used
 
         Returns: None
 
@@ -102,13 +97,10 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
         await self.send_message(
             config.gban_group,
             f'<a href="tg://user?id={uid}">{uid}</a>', parse_mode='html')
-        await self.send_message(
-            config.gban_group,
-            f'/unban {uid}')
-        if fedban:
+        for message in config.ungban_messages:
             await self.send_message(
                 config.gban_group,
-                f'/unfban {uid}')
+                message.format(uid=uid))
         await asyncio.sleep(0.5)
 
         with self.db.cursor() as cursor:
