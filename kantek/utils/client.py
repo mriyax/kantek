@@ -67,7 +67,6 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
             sql = 'select * from `banlist` where `id` = %s limit 1'
             cursor.execute(sql, (uid,))
             user = cursor.fetchone()
-            print(user)
 
         for ban_reason in AUTOMATED_BAN_REASONS:
             if user and (ban_reason in user[0]['reason']) and (ban_reason not in reason):
