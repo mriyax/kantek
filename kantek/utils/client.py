@@ -20,6 +20,8 @@ from utils.strafregister import Strafregister
 
 logger: logging.Logger = logzero.logger
 
+AUTOMATED_BAN_REASONS = ['Spambot', 'Vollzugsanstalt']
+
 
 class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
     """Custom telethon client that has the plugin manager as attribute."""
@@ -47,7 +49,7 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
         else:
             return await event.respond(msg, reply_to=event.message.id)
 
-    async def gban(self, uid: Union[int, str], reason: str, fedban: bool = True):
+    async def gban(self, uid: Union[int, str], reason: str):
         """Command to gban a user
 
         Args:
@@ -60,6 +62,17 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
         # if the user account is deleted this can be None
         if uid is None:
             return
+
+        with self.db.cursor() as cursor:
+            sql = 'select * from `banlist` where `id` = %s limit 1'
+            cursor.execute(sql, (uid,))
+            user = cursor.fetchone()
+            print(user)
+
+        for ban_reason in AUTOMATED_BAN_REASONS:
+            if user and (ban_reason in user[0]['reason']) and (ban_reason not in reason):
+                return False
+
         await self.sr.log(Strafregister.BAN, uid, reason)
         await self.send_message(
             config.gban_group,
@@ -71,20 +84,13 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
         await asyncio.sleep(0.5)
 
         with self.db.cursor() as cursor:
-            sql = 'select * from `banlist` where `id` = %s'
-            cursor.execute(sql, (uid,))
-            user = cursor.fetchone()
-
-            if user and "Spambot" in user['reason'] and "Spambot" not in reason:
-                return False
-
             sql = 'insert into `banlist` (`id`, `ban_reason`) values (%s, %s)'\
                   'on duplicate key update `ban_reason` = %s'
             cursor.execute(sql, (uid, reason, reason))
 
         self.db.commit()
 
-    async def ungban(self, uid: Union[int, str], fedban: bool = True):
+    async def ungban(self, uid: Union[int, str]):
         """Command to gban a user
 
         Args:
