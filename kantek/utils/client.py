@@ -69,7 +69,7 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
             user = cursor.fetchone()
 
         for ban_reason in AUTOMATED_BAN_REASONS:
-            if user and (ban_reason in user[0]['reason']) and (ban_reason not in reason):
+            if user and (ban_reason in user['ban_reason']) and (ban_reason not in reason):
                 return False
 
         await self.sr.log(Strafregister.BAN, uid, reason)
