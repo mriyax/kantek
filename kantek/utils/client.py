@@ -88,6 +88,7 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
             cursor.execute(sql, (uid, reason, reason))
 
         self.db.commit()
+        return True
 
     async def ungban(self, uid: Union[int, str]):
         """Command to gban a user
