@@ -3,21 +3,22 @@ import csv
 import hashlib
 import re
 import urllib
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import requests
 from faker import Faker
 from requests import ConnectionError
 from telethon import utils
 from telethon.events import NewMessage
-from telethon.tl.types import User
+from telethon.tl.types import Channel, Chat, User
 
 from utils import parsers
+from utils.mdtex import Italic
 
 INVITELINK_PATTERN = re.compile(r'(?:joinchat|join)(?:/|\?invite=)(.*|)')
 
 
-async def get_full_name(user: User) -> str:
+async def get_full_name(entity: Union[Channel, Chat, User]) -> str:
     """Return first_name + last_name if last_name exists else just first_name
 
     Args:
@@ -26,7 +27,22 @@ async def get_full_name(user: User) -> str:
     Returns:
         The combined names
     """
-    return str(user.first_name + ' ' + (user.last_name or ''))
+    if isinstance(entity, User):
+        if entity.deleted:
+            return Italic('Deleted Account')
+        elif entity.last_name and entity.first_name:
+            return '{} {}'.format(entity.first_name, entity.last_name)
+        elif entity.first_name:
+            return entity.first_name
+        elif entity.last_name:
+            return entity.last_name
+        else:
+            return ''
+
+    elif isinstance(entity, (Chat, Channel)):
+        return entity.title
+
+    return ''
 
 
 async def get_args(event: NewMessage.Event) -> Tuple[Dict[str, str], List[str]]:
