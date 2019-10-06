@@ -74,7 +74,7 @@ async def biopolizei(event: ChatAction.Event) -> None:
 
 
 async def _banuser(event, chat, userid, bancmd, ban_type, ban_reason):
-    formatted_reason = f'Spambot[kv2 {ban_type} 0x{ban_reason.rjust(4, "0")}]'
+    formatted_reason = f'Spambot[kv2 {ban_type} 0x{str(ban_reason).rjust(4, "0")}]'
     client: KantekClient = event.client
     db: MySQLDB = client.db
     chat: Channel = await event.get_chat()
@@ -83,7 +83,7 @@ async def _banuser(event, chat, userid, bancmd, ban_type, ban_reason):
     with db.cursor() as cursor:
         sql = 'select count(*) as count from `banlist` where `id` = %s and `ban_reason` = %s'
         cursor.execute(sql, (userid, formatted_reason))
-        count = cursor.findone()['count']
+        count = cursor.fetchone()['count']
         if count > 0:
             logger.info(f'User ID `{userid}` already banned for the same reason.')
             return
@@ -114,9 +114,9 @@ async def _check_message(event):
         return False, False
 
     # no need to ban bots as they can only be added by users anyway
-    user = await client.get_cached_entity(msg.from_id)
-    if user.bot:
-        return False, False
+    # user = await client.get_cached_entity(msg.from_id)
+    # if user.bot:
+    #     return False, False
 
     # disabled until the admins are cached to avoid fetching them on every message
     # admins = [p.id for p in (await client.get_participants(event.chat_id,
