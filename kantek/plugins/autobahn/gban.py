@@ -4,14 +4,16 @@ import datetime
 import logging
 from typing import Dict
 
+import logzero
 from telethon import events
+from telethon.errors import MessageIdInvalidError
 from telethon.events import NewMessage
 from telethon.tl.custom import Message
 from telethon.tl.functions.channels import EditBannedRequest
 from telethon.tl.functions.messages import ReportRequest
 from telethon.tl.types import Channel, InputReportReasonSpam, ChatBannedRights
 
-from config import cmd_prefix
+from config import cmd_prefix, gban_group
 from utils import helpers
 from utils.client import KantekClient
 from utils.mdtex import MDTeXDocument, Section, KeyValueItem, Bold, Code
@@ -19,6 +21,7 @@ from utils.mdtex import MDTeXDocument, Section, KeyValueItem, Bold, Code
 __version__ = '0.4.0'
 
 tlog = logging.getLogger('kantek-channel-log')
+logger: logging.Logger = logzero.logger
 
 DEFAULT_REASON = 'spam[gban]'
 
@@ -47,6 +50,10 @@ async def gban(event: NewMessage.Event) -> None:
             ban_reason = args[0]
         else:
             ban_reason = DEFAULT_REASON
+        try:
+            await reply_msg.forward_to(gban_group)
+        except MessageIdInvalidError as err:
+            logger.error(err)
         await client.gban(uid, ban_reason)
         await client(ReportRequest(chat, [reply_msg.id], InputReportReasonSpam()))
         if chat.creator or chat.admin_rights:
