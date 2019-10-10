@@ -13,7 +13,7 @@ from telethon.tl.functions.channels import (DeleteUserHistoryRequest,
                                             GetParticipantRequest)
 from telethon.tl.types import Channel, ChatBannedRights
 
-from database.arango import ArangoDB
+from database.mysql import MySQLDB
 from utils.client import KantekClient
 
 __version__ = '0.1.0'
@@ -26,9 +26,9 @@ logger: logging.Logger = logzero.logger
 async def kriminalamt(event: ChatAction.Event) -> None:
     client: KantekClient = event.client
     chat: Channel = await event.get_chat()
-    db: ArangoDB = client.db
+    db: MySQLDB = client.db
     chat_document = db.groups.get_chat(event.chat_id)
-    db_named_tags: Dict = chat_document['named_tags'].getStore()
+    db_named_tags: Dict = chat_document['named_tags']
     kriminalamt_tag = db_named_tags.get('kriminalamt')
     bancmd = db_named_tags.get('gbancmd', 'manual')
     delay = 1
