@@ -9,10 +9,17 @@ from argparse import ArgumentParser
 import logzero
 
 import config
+import spamwatch
 from database.mysql import MySQLDB
 from utils.client import KantekClient
 from utils.loghandler import TGChannelLogHandler
 from utils.pluginmgr import PluginManager
+
+try:
+    from config import spamwatch_host, spamwatch_token
+except ImportError:
+    spamwatch_host = ''
+    spamwatch_token = ''
 
 logger = logzero.setup_logger('kantek-logger', level=logging.DEBUG)
 telethon_logger = logzero.setup_logger('telethon', level=logging.INFO)
@@ -40,6 +47,9 @@ async def create_client(session_name, *, login=False, phone_number=None) -> Kant
         client.plugin_mgr = PluginManager(client)
         client.db = MySQLDB()
         client.plugin_mgr.register_all()
+
+        if spamwatch_host and spamwatch_token:
+            client.sw = spamwatch.Client(spamwatch_token, host=spamwatch_host)
 
     return client
 
@@ -76,6 +86,8 @@ async def main() -> None:
 
     for client in clients:
         await client.disconnect()
+
+    client.run_until_disconnected()
 
 
 if __name__ == '__main__':

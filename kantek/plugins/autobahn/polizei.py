@@ -37,7 +37,7 @@ async def polizei(event: NewMessage.Event) -> None:
     db: MySQLDB = client.db
     chat_document = db.groups.get_chat(event.chat_id)
     db_named_tags: Dict = chat_document['named_tags']
-    bancmd = db_named_tags.get('gbancmd')
+    bancmd = db_named_tags.get('gbancmd', 'manual')
     polizei_tag = db_named_tags.get('polizei')
     if polizei_tag == 'exclude':
         return
@@ -109,19 +109,22 @@ async def _banuser(event, chat, userid, bancmd, ban_type, ban_reason):
 async def _check_message(event):
     client: KantekClient = event.client
     msg: Message = event.message
+    user_id = msg.from_id
+    if user_id is None:
+        return False, False
     # exclude users below a certain id to avoid banning "legit" users
-    if msg.from_id and msg.from_id < 610000000:
+    if user_id and user_id < 610000000:
         return False, False
 
     # no need to ban bots as they can only be added by users anyway
-    # user = await client.get_cached_entity(msg.from_id)
-    # if user.bot:
-    #     return False, False
+    user = await client.get_cached_entity(user_id)
+    if user.bot:
+        return False, False
 
     # disabled until the admins are cached to avoid fetching them on every message
     # admins = [p.id for p in (await client.get_participants(event.chat_id,
     #                                                        filter=ChannelParticipantsAdmins()))]
-    # if msg.from_id in admins:
+    # if user_id in admins:
     #     return False, False
 
     # commands used in bots to blacklist items, these will be used by admins
@@ -150,6 +153,9 @@ async def _check_message(event):
                 domain = await helpers.resolve_url(button.url)
                 if domain in domain_blacklist:
                     return db.ab_domain_blacklist.hex_type, domain_blacklist[domain]
+                face_domain = await helpers.netloc(button.url)
+                if face_domain in domain_blacklist:
+                    return db.ab_domain_blacklist.hex_type, domain_blacklist[face_domain]
                 elif domain in constants.TELEGRAM_DOMAINS:
                     _entity = await client.get_cached_entity(domain)
                     if _entity and _entity in channel_blacklist:
@@ -162,33 +168,37 @@ async def _check_message(event):
             return db.ab_channel_blacklist.hex_type, channel_blacklist[chat_id]
 
         domain = ''
+        face_domain = ''
         channel = ''
         _entity = None
-        try:
-            if isinstance(entity, MessageEntityUrl):
-                domain = await helpers.resolve_url(text)
-                if domain in constants.TELEGRAM_DOMAINS:
-                    # remove any query parameters like ?start=
-                    # replace @ since some spammers started using it, only Telegram X supports it
-                    username = text.split('?')[0].replace('@', '')
-                    _entity = await client.get_cached_entity(username)
+        if isinstance(entity, MessageEntityUrl):
+            domain = await helpers.resolve_url(text)
+            face_domain = await helpers.netloc(text)
+            if domain in constants.TELEGRAM_DOMAINS:
+                # remove any query parameters like ?start=
+                # replace @ since some spammers started using it, only Telegram X supports it
+                username = text.split('?')[0].replace('@', '')
+                _entity = username
 
-            elif isinstance(entity, MessageEntityTextUrl):
-                domain = await helpers.resolve_url(entity.url)
-                if domain in constants.TELEGRAM_DOMAINS:
-                    username = entity.url.split('?')[0].replace('@', '')
-                    _entity = await client.get_cached_entity(username)
-            elif isinstance(entity, MessageEntityMention):
-                _entity = await client.get_cached_entity(text)
-        except constants.GET_ENTITY_ERRORS as err:
-            # print(entities[0][0].url)
-            logger.error(err)
+        elif isinstance(entity, MessageEntityTextUrl):
+            domain = await helpers.resolve_url(entity.url)
+            face_domain = await helpers.netloc(entity.url)
+            if domain in constants.TELEGRAM_DOMAINS:
+                username = entity.url.split('?')[0].replace('@', '')
+                _entity = username
+        elif isinstance(entity, MessageEntityMention):
+            _entity = text
 
         if _entity:
-            channel = _entity.id
+            try:
+                channel = (await client.get_cached_entity(_entity)).id
+            except constants.GET_ENTITY_ERRORS as err:
+                logger.error(err)
 
         if domain and domain in domain_blacklist:
             return db.ab_domain_blacklist.hex_type, domain_blacklist[domain]
+        if face_domain and face_domain in domain_blacklist:
+            return db.ab_domain_blacklist.hex_type, domain_blacklist[face_domain]
         if channel and channel in channel_blacklist:
             return db.ab_channel_blacklist.hex_type, channel_blacklist[channel]
 

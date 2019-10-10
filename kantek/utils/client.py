@@ -5,6 +5,8 @@ import logging
 from typing import Optional, Union
 
 import logzero
+import spamwatch
+from spamwatch.types import Permission
 from telethon import TelegramClient, hints
 from telethon.errors import UserAdminInvalidError
 from telethon.events import NewMessage
@@ -20,7 +22,7 @@ from utils.strafregister import Strafregister
 
 logger: logging.Logger = logzero.logger
 
-AUTOMATED_BAN_REASONS = ['Spambot', 'Vollzugsanstalt']
+AUTOMATED_BAN_REASONS = ['Spambot', 'Vollzugsanstalt', 'Kriminalamt']
 
 
 class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
@@ -29,6 +31,7 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
     db: Optional[MySQLDB] = None
     kantek_version: str = ''
     sr = Strafregister(config.strafregister_file)
+    sw: spamwatch.Client = None
 
     async def respond(self, event: NewMessage.Event,
                       msg: Union[str, FormattedBase, Section, MDTeXDocument],
@@ -88,6 +91,11 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
             cursor.execute(sql, (uid, reason, reason))
 
         self.db.commit()
+
+        if self.sw and self.sw.permission in [Permission.Admin,
+                                              Permission.Root]:
+            self.sw.add_ban(uid, reason)
+
         return True
 
     async def ungban(self, uid: Union[int, str]):
@@ -114,6 +122,10 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
             cursor.execute(sql, (uid,))
 
         self.db.commit()
+
+        if self.sw and self.sw.permission in [Permission.Admin,
+                                              Permission.Root]:
+            self.sw.delete_ban(uid)
 
     async def ban(self, chat, uid):
         """Bans a user from a chat."""
