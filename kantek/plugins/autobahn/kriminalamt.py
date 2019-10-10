@@ -28,7 +28,7 @@ async def kriminalamt(event: ChatAction.Event) -> None:
     chat: Channel = await event.get_chat()
     db: MySQLDB = client.db
     chat_document = db.groups.get_chat(event.chat_id)
-    db_named_tags: Dict = chat_document['named_tags'].getStore()
+    db_named_tags: Dict = chat_document['named_tags']
     kriminalamt_tag = db_named_tags.get('kriminalamt')
     bancmd = db_named_tags.get('gbancmd', 'manual')
     delay = 1
