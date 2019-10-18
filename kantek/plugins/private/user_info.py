@@ -5,12 +5,15 @@ from typing import Union
 from telethon import events
 from telethon.events import NewMessage
 from telethon.tl.custom import Forward, Message
-from telethon.tl.types import Channel, MessageEntityMention, MessageEntityMentionName, User
+from telethon.tl.types import (Channel, MessageEntityMention,
+                               MessageEntityMentionName, User)
 
 from config import cmd_prefix
-from utils import helpers, parsers, constants
+from database.mysql import MySQLDB
+from utils import constants, helpers, parsers
 from utils.client import KantekClient
-from utils.mdtex import Bold, Code, KeyValueItem, Link, MDTeXDocument, Section, SubSection
+from utils.mdtex import (Bold, Code, Italic, KeyValueItem, Link, MDTeXDocument,
+                         Section, SubSection)
 
 __version__ = '0.1.2'
 
@@ -68,7 +71,7 @@ async def _info_from_arguments(event) -> MDTeXDocument:
     for entity in entities:
         try:
             user: User = await client.get_entity(entity)
-            users.append(await _collect_user_info(user, **keyword_args))
+            users.append(await _collect_user_info(event, user, **keyword_args))
         except constants.GET_ENTITY_ERRORS as err:
             errors.append(str(entity))
     if users:
@@ -87,11 +90,14 @@ async def _info_from_reply(event, **kwargs) -> MDTeXDocument:
     else:
         user: User = await client.get_entity(reply_msg.sender_id)
 
-    return MDTeXDocument(await _collect_user_info(user, **kwargs))
+    return MDTeXDocument(await _collect_user_info(event, user, **kwargs))
 
 
-async def _collect_user_info(user, **kwargs) -> Union[Section, KeyValueItem]:
+async def _collect_user_info(event, user, **kwargs) -> Union[Section, KeyValueItem]:
+    client: KantekClient = event.client
+    db: MySQLDB = client.db
     id_only = kwargs.get('id', False)
+    bl_only = kwargs.get('bl', False)
     show_general = kwargs.get('general', True)
     show_bot = kwargs.get('bot', False)
     show_misc = kwargs.get('misc', False)
@@ -111,6 +117,20 @@ async def _collect_user_info(user, **kwargs) -> Union[Section, KeyValueItem]:
         title = Bold(full_name)
     if id_only:
         return KeyValueItem(title, Code(user.id))
+
+    with db.cursor() as cursor:
+        sql = 'select * from `banlist` where `id` = %s'
+        cursor.execute(sql, (str(user.id),))
+        result = cursor.fetchone()
+
+        if result:
+            reason = result['ban_reason']
+        else:
+            reason = None
+
+    reason = Italic('None') if reason is None else Code(reason)
+    if bl_only:
+        return KeyValueItem(title, reason)
     else:
         general = SubSection(
             Bold('general'),
@@ -118,7 +138,8 @@ async def _collect_user_info(user, **kwargs) -> Union[Section, KeyValueItem]:
             KeyValueItem('first_name', Code(user.first_name)),
             KeyValueItem('last_name', Code(user.last_name)),
             KeyValueItem('username', Code(user.username)),
-            KeyValueItem('mutual_contact', Code(user.mutual_contact)))
+            KeyValueItem('mutual_contact', Code(user.mutual_contact)),
+            KeyValueItem('ban_reason', reason))
 
         bot = SubSection(
             Bold('bot'),
