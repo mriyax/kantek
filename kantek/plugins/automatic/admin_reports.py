@@ -67,4 +67,5 @@ async def admin_reports(event: NewMessage.Event) -> None:
                                                       get_display_name(reply_user)),
                                                   log_message=logged_link)
 
-    await client.send_message(config.log_channel_id, log_messsage, parse_mode='html')
+    await client.send_message(config.log_channel_id, log_messsage,
+                              parse_mode='html', link_preview=False)
