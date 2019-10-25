@@ -42,15 +42,3 @@ async def lock(event: NewMessage.Event) -> None:
         await client.respond(event, MDTeXDocument('Chat locked.'))
     except ChatNotModifiedError:
         await client.respond(event, MDTeXDocument('Chat already locked.'))
-
-
-@events.register(events.NewMessage(incoming=True, pattern=f'{cmd_prefix}lock'))
-async def cleanup_group_admins(event: NewMessage.Event) -> None:
-    """Check if the issuer of the command is group admin. Then execute the cleanup command."""
-    if event.is_channel:
-        msg: Message = event.message
-        client: KantekClient = event.client
-        async for p in client.iter_participants(event.chat_id, filter=ChannelParticipantsAdmins):
-            if msg.from_id == p.id:
-                await lock(event)
-                break
