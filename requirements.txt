@@ -6,3 +6,4 @@ PyMySQL==0.9.3
 faker==1.0.7
 cryptg==0.2.post0
 spamwatch==0.1.1
+git+git://github.com/YouTwitFace/photohash
