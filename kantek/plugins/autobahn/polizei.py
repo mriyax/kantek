@@ -202,8 +202,8 @@ async def _check_message(event):
             return db.ab_domain_blacklist.hex_type, domain_blacklist[domain]
         if face_domain and face_domain in domain_blacklist:
             return db.ab_domain_blacklist.hex_type, domain_blacklist[face_domain]
-        if channel and channel in channel_blacklist:
-            return db.ab_channel_blacklist.hex_type, channel_blacklist[channel]
+        if channel and str(channel) in channel_blacklist:
+            return db.ab_channel_blacklist.hex_type, channel_blacklist[str(channel)]
 
     for string in string_blacklist:
         if string in msg.raw_text:
