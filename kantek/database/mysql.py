@@ -180,6 +180,12 @@ class AutobahnFileBlacklist(AutobahnBlacklist):
     hex_type = '0x5'
 
 
+class AutobahnMHashBlacklist(AutobahnBlacklist):
+    """Blacklist with blacklisted domains"""
+    name = 'mhash_blacklist'
+    hex_type = '0x6'
+
+
 class BanList:
     """A list of banned ids and their reason"""
     name = 'banlist'
@@ -231,13 +237,15 @@ class MySQLDB:
         self.ab_channel_blacklist = self._get_table(AutobahnChannelBlacklist)
         self.ab_domain_blacklist = self._get_table(AutobahnDomainBlacklist)
         self.ab_file_blacklist = self._get_table(AutobahnFileBlacklist)
+        self.ab_mhash_blacklist = self._get_table(AutobahnMHashBlacklist)
         self.ab_collection_map = {
             '0x0': self.ab_bio_blacklist,
             '0x1': self.ab_string_blacklist,
             '0x2': self.ab_filename_blacklist,
             '0x3': self.ab_channel_blacklist,
             '0x4': self.ab_domain_blacklist,
-            '0x5': self.ab_file_blacklist
+            '0x5': self.ab_file_blacklist,
+            '0x6': self.ab_mhash_blacklist
         }
         self.banlist = self._get_table(BanList)
 

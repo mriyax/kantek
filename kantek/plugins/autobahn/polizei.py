@@ -21,6 +21,8 @@ from telethon.tl.types import (Channel, ChatBannedRights,
 from database.mysql import MySQLDB
 from utils import helpers, constants
 from utils.client import KantekClient
+from utils.helpers import hash_photo
+from photohash import hashes_are_similar
 
 __version__ = '0.4.1'
 
@@ -141,6 +143,7 @@ async def _check_message(event):
     channel_blacklist = db.ab_channel_blacklist.get_all()
     domain_blacklist = db.ab_domain_blacklist.get_all()
     file_blacklist = db.ab_file_blacklist.get_all()
+    mhash_blacklist = db.ab_mhash_blacklist.get_all()
 
     if msg.buttons:
         _buttons = await msg.get_buttons()
@@ -218,5 +221,13 @@ async def _check_message(event):
                 return db.ab_file_blacklist.hex_type, file_blacklist[filehash]
         else:
             logger.warning('Skipped file because it was too large or not a document')
+
+    if msg.photo:
+        dl_photo = await msg.download_media(bytes)
+        photo_hash = await hash_photo(dl_photo)
+
+        for mhash in mhash_blacklist:
+            if hashes_are_similar(mhash, photo_hash, tolerance=2):
+                return db.ab_mhash_blacklist.hex_type, mhash_blacklist[mhash]
 
     return False, False
