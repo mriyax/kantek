@@ -145,6 +145,10 @@ async def _check_message(event):
     file_blacklist = db.ab_file_blacklist.get_all()
     mhash_blacklist = db.ab_mhash_blacklist.get_all()
 
+    inline_bot = msg.via_bot_id
+    if inline_bot is not None and inline_bot in channel_blacklist:
+        return db.ab_channel_blacklist.hex_type, channel_blacklist[inline_bot]
+
     if msg.buttons:
         _buttons = await msg.get_buttons()
         button: MessageButton
