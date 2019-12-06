@@ -172,6 +172,7 @@ async def _collect_user_info(event, user, **kwargs) -> Union[Section, KeyValueIt
             KeyValueItem('restriction_reason', Code(user.restriction_reason)),
             KeyValueItem('deleted', Code(user.deleted)),
             KeyValueItem('verified', Code(user.verified)),
+            KeyValueItem('scam', Code(user.scam)),
             KeyValueItem('min', Code(user.min)),
             KeyValueItem('lang_code', Code(user.lang_code)))
 
