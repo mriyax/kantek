@@ -5,7 +5,9 @@ from typing import Union
 from telethon import events
 from telethon.events import NewMessage
 from telethon.tl.custom import Forward, Message
-from telethon.tl.types import (Channel, MessageEntityMention,
+from telethon.tl.functions.channels import GetParticipantRequest
+from telethon.tl.types import (Channel, ChannelParticipantAdmin,
+                               ChannelParticipantSelf, MessageEntityMention,
                                MessageEntityMentionName, User)
 
 from config import cmd_prefix
@@ -47,7 +49,21 @@ async def user_info(event: NewMessage.Event) -> None:
     if response:
         await client.respond(event, response)
 
-    tlog.info('Ran `tag` in `%s`. Response: %s', chat.title, response)
+
+@events.register(events.NewMessage(outgoing=True, pattern=f'{cmd_prefix}add(ed)?'))
+async def added(event: NewMessage.Event) -> None:
+    client: KantekClient = event.client
+    chat: Channel = await event.get_input_chat()
+    me = await client(GetParticipantRequest(chat, 'me'))
+
+    if isinstance(me.participant, (ChannelParticipantSelf, ChannelParticipantAdmin)):
+        added_by_id = me.participant.inviter_id
+        response = Link(str(added_by_id), f'tg://user?id={added_by_id}')
+    else:
+        response = Italic('None')
+
+    response = MDTeXDocument(Section(Bold('Added by'), response))
+    await client.respond(event, response)
 
 
 async def _info_from_arguments(event) -> MDTeXDocument:
