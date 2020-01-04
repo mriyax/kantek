@@ -57,7 +57,7 @@ async def grenzschutz(event: Union[ChatAction.Event, NewMessage.Event]) -> None:
     with db.cursor() as cursor:
         sql = 'select * from `banlist` where `id` = %s'
         cursor.execute(sql, (uid,))
-        result = cursor.findone()
+        result = cursor.fetchone()
 
     if not result:
         return
