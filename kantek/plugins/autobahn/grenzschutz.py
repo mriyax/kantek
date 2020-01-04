@@ -62,7 +62,7 @@ async def grenzschutz(event: Union[ChatAction.Event, NewMessage.Event]) -> None:
     if not result:
         return
     else:
-        ban_reason = result['reason']
+        ban_reason = result['ban_reason']
     try:
         await client.ban(chat, uid)
     except UserIdInvalidError as err:
