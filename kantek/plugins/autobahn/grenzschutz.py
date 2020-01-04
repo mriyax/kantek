@@ -50,7 +50,7 @@ async def grenzschutz(event: Union[ChatAction.Event, NewMessage.Event]) -> None:
     if uid is None:
         return
     try:
-        user = await client.get_entity(uid)
+        user = await client.get_cached_entity(uid)
     except ValueError as err:
         logger.error(err)
 
