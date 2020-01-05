@@ -37,7 +37,7 @@ async def grenzschutz(event: Union[ChatAction.Event, NewMessage.Event]) -> None:
     db_named_tags: Dict = chat_document['named_tags']
     polizei_tag = db_named_tags.get('polizei')
     grenzschutz_tag = db_named_tags.get('grenzschutz')
-    silent = grenzschutz_tag == 'silent'
+    verbose = grenzschutz_tag == 'verbose'
     if grenzschutz_tag == 'exclude' or polizei_tag == 'exclude':
         return
 
@@ -69,7 +69,7 @@ async def grenzschutz(event: Union[ChatAction.Event, NewMessage.Event]) -> None:
         logger.error(f"Error occured while banning {err}")
         return
 
-    if not silent:
+    if verbose:
         message = MDTeXDocument(Section(
             Bold('SpamWatch Grenzschutz Ban'),
             KeyValueItem(Bold("User"),
