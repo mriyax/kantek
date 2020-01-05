@@ -8,6 +8,7 @@ from telethon.errors import UserIdInvalidError
 from telethon.events import ChatAction, NewMessage
 from telethon.tl.types import Channel
 
+import config
 from database.mysql import MySQLDB
 from utils.client import KantekClient
 from utils.mdtex import (Bold, Code, KeyValueItem, MDTeXDocument, Mention,
@@ -69,12 +70,13 @@ async def grenzschutz(event: Union[ChatAction.Event, NewMessage.Event]) -> None:
         logger.error(f"Error occured while banning {err}")
         return
 
+    message = MDTeXDocument(Section(
+        Bold('SpamWatch Grenzschutz Ban'),
+        KeyValueItem(Bold("User"),
+                     f'{Mention(user.first_name, uid)} [{Code(uid)}]'),
+        KeyValueItem(Bold("Reason"),
+                     ban_reason)
+    ))
+    await client.send_message(config.log_channel_id, str(message))
     if verbose:
-        message = MDTeXDocument(Section(
-            Bold('SpamWatch Grenzschutz Ban'),
-            KeyValueItem(Bold("User"),
-                         f'{Mention(user.first_name, uid)} [{Code(uid)}]'),
-            KeyValueItem(Bold("Reason"),
-                         ban_reason)
-        ))
         await client.send_message(chat, str(message))
