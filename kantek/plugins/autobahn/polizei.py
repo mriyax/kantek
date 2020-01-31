@@ -8,21 +8,22 @@ import uuid
 from typing import Dict
 
 import logzero
+from photohash import hashes_are_similar
 from telethon import events
 from telethon.events import ChatAction, NewMessage
-from telethon.tl.custom import Message
-from telethon.tl.custom import MessageButton
-from telethon.tl.functions.channels import EditBannedRequest, DeleteUserHistoryRequest
+from telethon.tl.custom import Message, MessageButton
+from telethon.tl.functions.channels import (DeleteUserHistoryRequest,
+                                            EditBannedRequest)
 from telethon.tl.functions.users import GetFullUserRequest
-from telethon.tl.types import (Channel, ChatBannedRights,
-                               MessageEntityTextUrl, UserFull, MessageEntityUrl,
-                               MessageEntityMention)
+from telethon.tl.types import (Channel, ChannelParticipantsAdmins,
+                               ChatBannedRights, MessageEntityMention,
+                               MessageEntityTextUrl, MessageEntityUrl, Photo,
+                               UserFull)
 
 from database.mysql import MySQLDB
-from utils import helpers, constants
+from utils import constants, helpers
 from utils.client import KantekClient
 from utils.helpers import hash_photo
-from photohash import hashes_are_similar
 
 __version__ = '0.4.1'
 
@@ -45,11 +46,14 @@ async def polizei(event: NewMessage.Event) -> None:
         return
     ban_type, ban_reason = await _check_message(event)
     if ban_type and ban_reason:
-        await _banuser(event, chat, event.message.from_id, bancmd, ban_type, ban_reason)
+        uid = event.message.from_id
+        admins = [p.id for p in (await client.get_participants(event.chat_id, filter=ChannelParticipantsAdmins()))]
+        if uid not in admins:
+            await _banuser(event, chat, uid, bancmd, ban_type, ban_reason)
 
 
 @events.register(events.chataction.ChatAction())
-async def biopolizei(event: ChatAction.Event) -> None:
+async def join_polizei(event: ChatAction.Event) -> None:
     """Plugin to ban users with blacklisted strings in their bio."""
     client: KantekClient = event.client
     chat: Channel = await event.get_chat()
@@ -62,6 +66,8 @@ async def biopolizei(event: ChatAction.Event) -> None:
         return
     ban_type, ban_reason = False, False
     bio_blacklist = db.ab_bio_blacklist.get_all()
+    mhash_blacklist = db.ab_mhash_blacklist.get_all()
+
     try:
         user: UserFull = await client(GetFullUserRequest(await event.get_input_user()))
     except TypeError as e:
@@ -71,6 +77,15 @@ async def biopolizei(event: ChatAction.Event) -> None:
     for string in bio_blacklist:
         if user.about and string in user.about:
             ban_type, ban_reason = db.ab_bio_blacklist.hex_type, bio_blacklist[string]
+
+    if user.profile_photo:
+        dl_photo = await client.download_file(user.profile_photo)
+        photo_hash = await hash_photo(dl_photo)
+
+        for mhash in mhash_blacklist:
+            if hashes_are_similar(mhash, photo_hash, tolerance=2):
+                ban_type, ban_reason = db.ab_mhash_blacklist.hex_type, mhash_blacklist[mhash]
+
     if ban_type and ban_reason:
         await _banuser(event, chat, event.user_id, bancmd, ban_type, ban_reason)
 
@@ -122,12 +137,6 @@ async def _check_message(event):
     user = await client.get_cached_entity(user_id)
     if user.bot:
         return False, False
-
-    # disabled until the admins are cached to avoid fetching them on every message
-    # admins = [p.id for p in (await client.get_participants(event.chat_id,
-    #                                                        filter=ChannelParticipantsAdmins()))]
-    # if user_id in admins:
-    #     return False, False
 
     # commands used in bots to blacklist items, these will be used by admins
     # so they shouldnt be banned for it

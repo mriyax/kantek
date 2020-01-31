@@ -6,7 +6,7 @@ import logzero
 from telethon import events
 from telethon.errors import UserIdInvalidError
 from telethon.events import ChatAction, NewMessage
-from telethon.tl.types import Channel
+from telethon.tl.types import Channel, ChannelParticipantsAdmins
 
 import config
 from database.mysql import MySQLDB
@@ -64,19 +64,22 @@ async def grenzschutz(event: Union[ChatAction.Event, NewMessage.Event]) -> None:
         return
     else:
         ban_reason = result['ban_reason']
-    try:
-        await client.ban(chat, uid)
-    except UserIdInvalidError as err:
-        logger.error(f"Error occured while banning {err}")
-        return
 
-    message = MDTeXDocument(Section(
-        Bold('SpamWatch Grenzschutz Ban'),
-        KeyValueItem(Bold("User"),
-                     f'{Mention(user.first_name, uid)} [{Code(uid)}]'),
-        KeyValueItem(Bold("Reason"),
-                     ban_reason)
-    ))
-    await client.send_message(config.log_channel_id, str(message))
-    if verbose:
-        await client.send_message(chat, str(message))
+    admins = [p.id for p in (await client.get_participants(event.chat_id, filter=ChannelParticipantsAdmins()))]
+    if uid not in admins:
+        try:
+            await client.ban(chat, uid)
+        except UserIdInvalidError as err:
+            logger.error(f"Error occured while banning {err}")
+            return
+
+        message = MDTeXDocument(Section(
+            Bold('SpamWatch Grenzschutz Ban'),
+            KeyValueItem(Bold("User"),
+                         f'{Mention(user.first_name, uid)} [{Code(uid)}]'),
+            KeyValueItem(Bold("Reason"),
+                         ban_reason)
+        ))
+        await client.send_message(config.log_channel_id, str(message))
+        if verbose:
+            await client.send_message(chat, str(message))
