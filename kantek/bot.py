@@ -32,7 +32,7 @@ tlog.setLevel(logging.INFO)
 __version__ = '0.3.1'
 
 
-async def create_client(session_name, *, login=False, phone_number=None) -> KantekClient:
+async def create_client(session_name, *, login=False, bot=False, phone_number=None) -> KantekClient:
     """Create a kantek client."""
     client = KantekClient(
         session_name,
@@ -40,7 +40,10 @@ async def create_client(session_name, *, login=False, phone_number=None) -> Kant
         config.api_hash)
 
     if login:
-        await client.start(phone_number)
+        if bot:
+            await client.start(bot_token=phone_number)
+        else:
+            await client.start(phone=phone_number)
     else:
         await client.start()
         client.kantek_version = __version__
@@ -60,12 +63,13 @@ async def main() -> None:
     parser = ArgumentParser()
     parser.add_argument('-l', '--login', nargs=2, metavar=('name', 'number'),
                         help='Create a new Telegram session')
+    parser.add_argument('-b', '--bot', help='Login as a bot', default=False, action='store_true')
     args = parser.parse_args(sys.argv[1:])
 
     if args.login:
         name, phone_number = args.login
-        client = await create_client(f'{session_path}/{name}',
-                                     login=True, phone_number=phone_number)
+        client = await create_client(f'{session_path}/{name}', login=True,
+                                     bot=args.bot, phone_number=phone_number)
         await client.disconnect()
         return
 
