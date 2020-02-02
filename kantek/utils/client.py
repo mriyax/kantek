@@ -52,7 +52,7 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
                 reply_to = event.action_message.id
             else:
                 reply_to = (event.reply_to_msg_id or event.message.id)
-            return await event.respond(msg, reply_to=reply_to)
+            return await event.respond(msg, reply_to=reply_to, link_preview=link_preview)
         else:
             return await event.respond(msg, reply_to=event.message.id, link_preview=link_preview)
 
