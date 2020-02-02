@@ -18,7 +18,6 @@ import config
 from database.mysql import MySQLDB
 from utils.mdtex import FormattedBase, MDTeXDocument, Section
 from utils.pluginmgr import PluginManager
-from utils.strafregister import Strafregister
 
 logger: logging.Logger = logzero.logger
 
@@ -30,7 +29,6 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
     plugin_mgr: Optional[PluginManager] = None
     db: Optional[MySQLDB] = None
     kantek_version: str = ''
-    sr = Strafregister(config.strafregister_file)
     sw: spamwatch.Client = None
 
     async def respond(self, event: NewMessage.Event,
@@ -79,7 +77,6 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
             if user and (ban_reason in user['ban_reason']) and (ban_reason not in reason):
                 return False
 
-        await self.sr.log(Strafregister.BAN, uid, reason)
         await self.send_message(
             config.gban_group,
             f'<a href="tg://user?id={uid}">{uid}</a>', parse_mode='html')
@@ -111,7 +108,6 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
         Returns: None
 
         """
-        await self.sr.log(Strafregister.UNBAN, uid)
         await self.send_message(
             config.gban_group,
             f'<a href="tg://user?id={uid}">{uid}</a>', parse_mode='html')
