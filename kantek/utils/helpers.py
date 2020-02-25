@@ -10,10 +10,8 @@ from typing import Dict, List, Tuple, Union
 
 import logzero
 import photohash
-import requests
 from faker import Faker
 from PIL import Image
-from requests import ConnectionError, ReadTimeout
 from telethon import utils
 from telethon.events import NewMessage
 from telethon.tl.types import Channel, Chat, User
