@@ -1,6 +1,6 @@
 """Module containing all operations related to MySQL"""
 import json
-from typing import Dict
+from typing import Dict, Optional
 
 import pymysql
 import pymysql.connections
