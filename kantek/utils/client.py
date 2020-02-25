@@ -6,6 +6,8 @@ from typing import Optional, Union
 
 import logzero
 import spamwatch
+from aiohttp import ClientTimeout, ClientSession, ClientError
+from faker import Faker
 from spamwatch.types import Permission
 from telethon import TelegramClient, hints
 from telethon.errors import UserAdminInvalidError
@@ -30,6 +32,12 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
     db: Optional[MySQLDB] = None
     kantek_version: str = ''
     sw: spamwatch.Client = None
+    sw_url: str = None
+    aioclient: ClientSession = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.aioclient = ClientSession(timeout=ClientTimeout(total=2))
 
     async def respond(self, event: NewMessage.Event,
                       msg: Union[str, FormattedBase, Section, MDTeXDocument],
@@ -142,3 +150,33 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
     async def get_cached_entity(self, entity: hints.EntitiesLike):
         input_entity = await self.get_input_entity(entity)
         return await self.get_entity(input_entity)
+
+    async def resolve_url(self, url: str, base_domain: bool = True) -> str:
+        """Follow all redirects and return the base domain
+
+        Args:
+            url: The url
+            base_domain: Flag if any subdomains should be stripped
+
+        Returns:
+            The base comain as given by urllib.parse
+        """
+        faker = Faker()
+        headers = {'User-Agent': faker.user_agent()}
+        old_url = url
+        if not url.startswith('http'):
+            url = f'http://{url}'
+        try:
+            async with self.aioclient.get(url, headers=headers) as response:
+                url = response.url.host
+        except (ClientError, asyncio.TimeoutError) as err:
+            logger.warning(err)
+            return old_url
+
+        if base_domain:
+            # split up the result to only get the base domain
+            # www.sitischu.com => sitischu.com
+            _base_domain = url.split('.', maxsplit=url.count('.') - 1)[-1]
+            if _base_domain:
+                url = _base_domain
+        return url

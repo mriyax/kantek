@@ -169,7 +169,7 @@ async def _check_message(event):
                 _, chat_id, _ = await helpers.resolve_invite_link(button.url)
                 if chat_id in channel_blacklist:
                     return db.ab_channel_blacklist.hex_type, channel_blacklist[chat_id]
-                domain = await helpers.resolve_url(button.url)
+                domain = await client.resolve_url(button.url)
                 if domain in domain_blacklist:
                     return db.ab_domain_blacklist.hex_type, domain_blacklist[domain]
                 face_domain = await helpers.netloc(button.url)
@@ -191,7 +191,7 @@ async def _check_message(event):
         channel = ''
         _entity = None
         if isinstance(entity, MessageEntityUrl):
-            domain = await helpers.resolve_url(text)
+            domain = await client.resolve_url(text)
             face_domain = await helpers.netloc(text)
             if domain in constants.TELEGRAM_DOMAINS:
                 # remove any query parameters like ?start=
@@ -200,7 +200,7 @@ async def _check_message(event):
                 _entity = username
 
         elif isinstance(entity, MessageEntityTextUrl):
-            domain = await helpers.resolve_url(entity.url)
+            domain = await client.resolve_url(entity.url)
             face_domain = await helpers.netloc(entity.url)
             if domain in constants.TELEGRAM_DOMAINS:
                 username = entity.url.split('?')[0].replace('@', '')

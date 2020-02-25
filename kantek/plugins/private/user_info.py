@@ -87,7 +87,7 @@ async def _info_from_arguments(event) -> MDTeXDocument:
     for entity in entities:
         try:
             user: User = await client.get_entity(entity)
-            users.append(await _collect_user_info(event, user, **keyword_args))
+            users.append(await _collect_user_info(client, user, **keyword_args))
         except constants.GET_ENTITY_ERRORS as err:
             errors.append(str(entity))
     if users:
@@ -106,12 +106,11 @@ async def _info_from_reply(event, **kwargs) -> MDTeXDocument:
     else:
         user: User = await client.get_entity(reply_msg.sender_id)
 
-    return MDTeXDocument(await _collect_user_info(event, user, **kwargs))
+    return MDTeXDocument(await _collect_user_info(client, user, **kwargs))
 
 
-async def _collect_user_info(event, user, **kwargs) -> Union[Section, KeyValueItem]:
-    client: KantekClient = event.client
-    db: MySQLDB = client.db
+async def _collect_user_info(client, user, **kwargs) -> Union[Section, KeyValueItem]:
+    db: MySQLDB = client.db    
     id_only = kwargs.get('id', False)
     bl_only = kwargs.get('bl', False)
     show_general = kwargs.get('general', True)
@@ -131,6 +130,11 @@ async def _collect_user_info(event, user, **kwargs) -> Union[Section, KeyValueIt
         title = Link(full_name, f'tg://user?id={user.id}')
     else:
         title = Bold(full_name)
+
+    ban_reason = client.db.banlist.get_user(user.id)
+    if ban_reason:
+        ban_reason = ban_reason['reason']
+
     if id_only:
         return KeyValueItem(title, Code(user.id))
 
@@ -155,7 +159,7 @@ async def _collect_user_info(event, user, **kwargs) -> Union[Section, KeyValueIt
             KeyValueItem('last_name', Code(user.last_name)),
             KeyValueItem('username', Code(user.username)),
             KeyValueItem('mutual_contact', Code(user.mutual_contact)),
-            KeyValueItem('ban_reason', reason))
+            KeyValueItem('ban_reason', Code(ban_reason)) if ban_reason else KeyValueItem('gbanned', Code('False')))
 
         bot = SubSection(
             Bold('bot'),

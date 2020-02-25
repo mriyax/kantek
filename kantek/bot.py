@@ -91,6 +91,10 @@ async def main() -> None:
     for client in clients:
         await client.disconnect()
 
+    if spamwatch_host and spamwatch_token:
+        client.sw = spamwatch.Client(spamwatch_token, host=spamwatch_host)
+        client.sw_url = spamwatch_host
+
     client.run_until_disconnected()
 
 

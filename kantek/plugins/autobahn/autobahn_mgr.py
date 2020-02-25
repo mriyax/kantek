@@ -3,6 +3,7 @@ import asyncio
 import logging
 import os
 import re
+from collections import Counter
 
 import logzero
 from telethon import events
@@ -87,16 +88,26 @@ async def _add_string(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
     skipped_items = []
     hex_type = AUTOBAHN_TYPES.get(string_type)
     collection = db.ab_collection_map.get(hex_type)
+    warn_message = ''
+
     for string in strings:
         if hex_type is None or collection is None:
             continue
         if hex_type == '0x3':
-            # remove any query parameters like ?start=
-            # replace @ aswell since some spammers started using it, only Telegram X supports it
-            _string = string.split('?')[0].replace('@', '')
+            _string = string
             link_creator, chat_id, random_part = await helpers.resolve_invite_link(string)
             string = chat_id
             if string is None:
+                if _string.startswith('tg://resolve'):
+                    # tg://resolve?domain=<username>&start=<value>
+                    params = re.split(r'[?&]', _string)[1:]
+                    for param in params:
+                        if param.startswith('domain'):
+                            _, _string = param.split('=')
+                else:
+                    # remove any query parameters like ?start=
+                    # replace @ aswell since some spammers started using it, only Telegram X supports it
+                    _string = _string.split('?')[0].replace('@', '')
                 try:
                     entity = await event.client.get_entity(_string)
                 except constants.GET_ENTITY_ERRORS as err:
@@ -106,7 +117,7 @@ async def _add_string(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
                 if entity:
                     string = entity.id
         elif hex_type == '0x4':
-            string = await helpers.resolve_url(string)
+            string = (await client.resolve_url(string)).lower()
             if string in constants.TELEGRAM_DOMAINS:
                 skipped_items.append(string)
                 continue
@@ -159,6 +170,9 @@ async def _add_string(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
 
                 if not existing_one:
                     collection.add_string(photo_hash)
+                    if Counter(photo_hash).get('0', 0) > 8:
+                        warn_message = 'The image seems to contain a lot of the same color. This might lead to false positives.'
+
                     added_items.append(Code(photo_hash))
                 else:
                     existing_items.append(Code(photo_hash))
@@ -176,6 +190,8 @@ async def _add_string(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
                          Section(Bold('Skipped Items:'),
                                  SubSection(Bold(string_type),
                                             *skipped_items)) if skipped_items else '',
+                         Section(Bold('Warning:'),
+                                 warn_message) if warn_message else ''
                          )
 
 
