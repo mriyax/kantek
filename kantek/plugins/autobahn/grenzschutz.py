@@ -78,7 +78,8 @@ async def grenzschutz(event: Union[ChatAction.Event, NewMessage.Event]) -> None:
             KeyValueItem(Bold("User"),
                          f'{Mention(user.first_name, uid)} [{Code(uid)}]'),
             KeyValueItem(Bold("Reason"),
-                         ban_reason)
+                         ban_reason),
+            KeyValueItem(Bold("Chat ID"), str(event.chat_id))
         ))
         await client.send_message(config.log_channel_id, str(message))
         if verbose:
