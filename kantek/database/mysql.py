@@ -222,6 +222,12 @@ class BanList:
             cursor.execute(sql, (_id,))
             return cursor.fetchone()
 
+    def get_user(self, uid: int) -> Optional[Dict]:
+        with self.db.cursor() as cursor:
+            sql = 'select * from `{}` where `id` = %s'.format(self.name)
+            cursor.execute(sql, (str(uid),))
+            return cursor.fetchone()
+
 
 class MySQLDB:
     """Handle creation of all required Documents."""
