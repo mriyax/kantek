@@ -132,6 +132,8 @@ async def _collect_user_info(client, user, **kwargs) -> Union[Section, KeyValueI
         title = Bold(full_name)
 
     ban_reason = client.db.banlist.get_user(user.id)
+    if ban_reason:
+        ban_reason = ban_reason['ban_reason']
 
     if id_only:
         return KeyValueItem(title, Code(user.id))
