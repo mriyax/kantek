@@ -136,7 +136,7 @@ async def _collect_user_info(client, user, **kwargs) -> Union[Section, KeyValueI
     if id_only:
         return KeyValueItem(title, Code(user.id))
     if bl_only:
-        return KeyValueItem(title, Code(ban_reason)) if ban_reason else Italic('False'))
+        return KeyValueItem(title, Code(ban_reason) if ban_reason else Italic('False'))
     else:
         general = SubSection(
             Bold('general'),
