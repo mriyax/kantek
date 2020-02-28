@@ -132,25 +132,11 @@ async def _collect_user_info(client, user, **kwargs) -> Union[Section, KeyValueI
         title = Bold(full_name)
 
     ban_reason = client.db.banlist.get_user(user.id)
-    if ban_reason:
-        ban_reason = ban_reason['reason']
 
     if id_only:
         return KeyValueItem(title, Code(user.id))
-
-    with db.cursor() as cursor:
-        sql = 'select * from `banlist` where `id` = %s'
-        cursor.execute(sql, (str(user.id),))
-        result = cursor.fetchone()
-
-        if result:
-            reason = result['ban_reason']
-        else:
-            reason = None
-
-    reason = Italic('None') if reason is None else Code(reason)
     if bl_only:
-        return KeyValueItem(title, reason)
+        return KeyValueItem(title, Code(ban_reason)) if ban_reason else Italic('False'))
     else:
         general = SubSection(
             Bold('general'),
