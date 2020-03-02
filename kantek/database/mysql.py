@@ -1,10 +1,10 @@
 """Module containing all operations related to MySQL"""
+import asyncio
 import json
 from typing import Dict, Optional
 
-import pymysql
-import pymysql.connections
-import pymysql.cursors
+import aiomysql
+import aiomysql.connection
 
 import config
 
@@ -13,19 +13,18 @@ class Chats:
     """A table containing Telegram Chats"""
     name = 'chats'
 
-    def __init__(self, db: pymysql.connections.Connection) -> None:
+    def __init__(self, db: aiomysql.connection.Connection) -> None:
         self.db = db
 
-        with self.db.cursor() as cursor:
-            cursor.execute('''create table if not exists `{}` (
-                `id` varchar(255) not null primary key,
-                `tags` text not null,
-                `named_tags` text not null
-            )'''.format(self.name))
+    async def create(self):
+        await self.db.execute('''create table if not exists `{}` (
+            `id` varchar(255) not null primary key,
+            `tags` text not null,
+            `named_tags` text not null
+        )'''.format(self.name))
+        await self.db.save()
 
-        self.db.commit()
-
-    def add_chat(self, chat_id: int) -> Dict:
+    async def add_chat(self, chat_id: int) -> Dict:
         """Add a Chat to the DB or return an existing one.
 
         Args:
@@ -34,23 +33,19 @@ class Chats:
         Returns: The chat Document
 
         """
-        with self.db.cursor() as cursor:
-            sql = 'insert ignore into `{}` (`id`, `tags`, `named_tags`) values (%s, "[]", "{{}}")'.format(
-                self.name)
-            cursor.execute(sql, (chat_id,))
+        sql = 'insert ignore into `{}` (`id`, `tags`, `named_tags`) values (%s, "[]", "{{}}")'.format(
+            self.name)
+        await self.db.execute(sql, chat_id)
+        await self.db.save()
 
-        self.db.commit()
+        sql = 'select * from `{}` where `id` = %s'.format(self.name)
+        chat = await self.db.execute(sql, chat_id, fetch='one')
 
-        with self.db.cursor() as cursor:
-            sql = 'select * from `{}` where `id` = %s'.format(self.name)
-            cursor.execute(sql, (chat_id,))
+        chat['tags'] = json.loads(chat['tags'])
+        chat['named_tags'] = json.loads(chat['named_tags'])
+        return chat
 
-            chat = cursor.fetchone()
-            chat['tags'] = json.loads(chat['tags'])
-            chat['named_tags'] = json.loads(chat['named_tags'])
-            return chat
-
-    def get_chat(self, chat_id: int) -> Dict:
+    async def get_chat(self, chat_id: int) -> Dict:
         """Return a Chat document
 
         Args:
@@ -59,13 +54,11 @@ class Chats:
         Returns: The chat Document
 
         """
-        with self.db.cursor() as cursor:
-            sql = 'select * from `{}` where `id` = %s'.format(self.name)
-            cursor.execute(sql, (str(chat_id),))
-            chat = cursor.fetchone()
+        sql = 'select * from `{}` where `id` = %s'.format(self.name)
+        chat = await self.db.execute(sql, str(chat_id), fetch='one')
 
         if chat is None:
-            return self.add_chat(chat_id)
+            return await self.add_chat(chat_id)
         else:
             chat['tags'] = json.loads(chat['tags'])
             chat['named_tags'] = json.loads(chat['named_tags'])
@@ -76,18 +69,17 @@ class AutobahnBlacklist:
     """Base class for all types of Blacklists."""
     name = None
 
-    def __init__(self, db: pymysql.connections.Connection) -> None:
+    def __init__(self, db: aiomysql.connection.Connection) -> None:
         self.db = db
 
-        with self.db.cursor() as cursor:
-            cursor.execute('''create table if not exists `{}` (
-                `id` int not null auto_increment primary key,
-                `string` varchar(255) not null unique
-            )'''.format(self.name))
+    async def create(self):
+        await self.db.execute('''create table if not exists `{}` (
+            `id` int not null auto_increment primary key,
+            `string` varchar(255) not null unique
+        )'''.format(self.name))
+        await self.db.save()
 
-        self.db.commit()
-
-    def add_string(self, string: str) -> Dict:
+    async def add_string(self, string: str) -> Dict:
         """Add a Chat to the DB or return an existing one.
 
         Args:
@@ -96,18 +88,14 @@ class AutobahnBlacklist:
         Returns: The Document
 
         """
-        with self.db.cursor() as cursor:
-            sql = 'insert ignore into `{}` (`string`) values (%s)'.format(self.name)
-            cursor.execute(sql, (string,))
+        sql = 'insert ignore into `{}` (`string`) values (%s)'.format(self.name)
+        await self.db.execute(sql, string)
+        await self.db.save()
 
-        self.db.commit()
+        sql = 'select * from `{}` where `string` = %s'.format(self.name)
+        return await self.db.execute(sql, string, fetch='one')
 
-        with self.db.cursor() as cursor:
-            sql = 'select * from `{}` where `string` = %s'.format(self.name)
-            cursor.execute(sql, (string,))
-            return cursor.fetchone()
-
-    def delete_string(self, string: str) -> None:
+    async def delete_string(self, string: str) -> None:
         """Delete a Chat from the DB.
 
         Args:
@@ -116,13 +104,11 @@ class AutobahnBlacklist:
         Returns: None
 
         """
-        with self.db.cursor() as cursor:
-            sql = 'delete from `{}` where `string` = %s'.format(self.name)
-            cursor.execute(sql, (string,))
+        sql = 'delete from `{}` where `string` = %s'.format(self.name)
+        await self.db.execute(sql, string)
+        await self.db.save()
 
-        self.db.commit()
-
-    def get_string(self, string: str) -> Dict:
+    async def get_string(self, string: str) -> Dict:
         """Get a Chat from the DB or return an existing one.
 
         Args:
@@ -131,17 +117,14 @@ class AutobahnBlacklist:
         Returns: The Document
 
         """
-        with self.db.cursor() as cursor:
-            sql = 'select * from `{}` where `string` = %s'.format(self.name)
-            cursor.execute(sql, (string,))
-            return cursor.fetchone()
+        sql = 'select * from `{}` where `string` = %s'.format(self.name)
+        return await self.db.execute(sql, string, fetch='one')
 
-    def get_all(self) -> Dict:
+    async def get_all(self) -> Dict:
         """Get all strings in the Blacklist."""
-        with self.db.cursor() as cursor:
-            sql = 'select * from `{}`'.format(self.name)
-            cursor.execute(sql)
-            return {doc['string']: doc['id'] for doc in cursor.fetchall()}
+        sql = 'select * from `{}`'.format(self.name)
+        docs = await self.db.execute(sql, fetch='all')
+        return {doc['string']: doc['id'] for doc in docs}
 
 
 class AutobahnBioBlacklist(AutobahnBlacklist):
@@ -190,18 +173,17 @@ class BanList:
     """A list of banned ids and their reason"""
     name = 'banlist'
 
-    def __init__(self, db: pymysql.connections.Connection):
+    def __init__(self, db: aiomysql.connection.Connection):
         self.db = db
 
-        with self.db.cursor() as cursor:
-            cursor.execute('''create table if not exists `{}` (
-                `id` int not null primary key,
-                `ban_reason` varchar(255) not null
-            )'''.format(self.name))
+    async def create(self):
+        await self.db.execute('''create table if not exists `{}` (
+            `id` int not null primary key,
+            `ban_reason` varchar(255) not null
+        )'''.format(self.name))
+        await self.db.save()
 
-        self.db.commit()
-
-    def add_user(self, _id: int, reason: str) -> Dict:
+    async def add_user(self, _id: int, reason: str) -> Dict:
         """Add a Chat to the DB or return an existing one.
 
         Args:
@@ -211,39 +193,32 @@ class BanList:
         Returns: The chat Document
 
         """
-        with self.db.cursor() as cursor:
-            sql = 'insert ignore into `{}` (`id`, `string`) values (%s, %s)'.format(self.name)
-            cursor.execute(sql, (_id, reason))
+        sql = 'insert ignore into `{}` (`id`, `string`) values (%s, %s)'.format(self.name)
+        await self.db.execute(sql, _id, reason)
+        await self.db.save()
 
-        self.db.commit()
+        sql = 'select * from `{}` where `id` = %s'.format(self.name)
+        return await self.db.execute(sql, _id, fetch='one')
 
-        with self.db.cursor() as cursor:
-            sql = 'select * from `{}` where `id` = %s'.format(self.name)
-            cursor.execute(sql, (_id,))
-            return cursor.fetchone()
-
-    def get_user(self, uid: int) -> Optional[Dict]:
-        with self.db.cursor() as cursor:
-            sql = 'select * from `{}` where `id` = %s'.format(self.name)
-            cursor.execute(sql, (str(uid),))
-            return cursor.fetchone()
+    async def get_user(self, uid: int) -> Optional[Dict]:
+        sql = 'select * from `{}` where `id` = %s'.format(self.name)
+        return await self.db.execute(sql, str(uid), fetch='one')
 
 
 class MySQLDB:
     """Handle creation of all required Documents."""
 
     def __init__(self):
-        self._db = pymysql.connect(host=config.db_host, user=config.db_username,
-                                   password=config.db_password, db=config.db_name,
-                                   cursorclass=pymysql.cursors.DictCursor)
-        self.groups = self._get_table(Chats)
-        self.ab_bio_blacklist = self._get_table(AutobahnBioBlacklist)
-        self.ab_string_blacklist = self._get_table(AutobahnStringBlacklist)
-        self.ab_filename_blacklist = self._get_table(AutobahnFilenameBlacklist)
-        self.ab_channel_blacklist = self._get_table(AutobahnChannelBlacklist)
-        self.ab_domain_blacklist = self._get_table(AutobahnDomainBlacklist)
-        self.ab_file_blacklist = self._get_table(AutobahnFileBlacklist)
-        self.ab_mhash_blacklist = self._get_table(AutobahnMHashBlacklist)
+        self._lock = asyncio.Lock()
+        self._db = None
+        self.ab_collection_map = {}
+
+    async def connect(self):
+        self._db = await aiomysql.connect(host=config.db_host, user=config.db_username,
+                                          password=config.db_password, db=config.db_name,
+                                          cursorclass=aiomysql.DictCursor)
+
+        await self._create_tables()
         self.ab_collection_map = {
             '0x0': self.ab_bio_blacklist,
             '0x1': self.ab_string_blacklist,
@@ -253,19 +228,40 @@ class MySQLDB:
             '0x5': self.ab_file_blacklist,
             '0x6': self.ab_mhash_blacklist
         }
-        self.banlist = self._get_table(BanList)
 
-    @property
-    def cursor(self):
-        """Wrapper around the PyMySQL Connection.cursor to avoid having to do `db.db.cursor`."""
-        self._db.ping(reconnect=True)
-        return self._db.cursor
+    async def _create_tables(self):
+        self.groups = await self._get_table(Chats)
+        self.ab_bio_blacklist = await self._get_table(AutobahnBioBlacklist)
+        self.ab_string_blacklist = await self._get_table(AutobahnStringBlacklist)
+        self.ab_filename_blacklist = await self._get_table(AutobahnFilenameBlacklist)
+        self.ab_channel_blacklist = await self._get_table(AutobahnChannelBlacklist)
+        self.ab_domain_blacklist = await self._get_table(AutobahnDomainBlacklist)
+        self.ab_file_blacklist = await self._get_table(AutobahnFileBlacklist)
+        self.ab_mhash_blacklist = await self._get_table(AutobahnMHashBlacklist)
+        self.banlist = await self._get_table(BanList)
 
-    def commit(self):
-        """Wrapper around the PyMySQL Connection.commit to avoid having to do `db.db.commit`."""
-        return self._db.commit()
+    async def save(self):
+        async with self._lock:
+            await self._db.commit()
 
-    def _get_table(self, table):
+    async def execute(self, stmt, *values, fetch=False):
+        async with self._lock:
+            cursor = await self._db.cursor()
+
+            try:
+                await cursor.execute(stmt, values)
+
+                if fetch == 'all':
+                    return await cursor.fetchall()
+                elif fetch == 'one':
+                    return await cursor.fetchone()
+            finally:
+                await cursor.close()
+
+    def disconnect(self):
+        self._db.close()
+
+    async def _get_table(self, table):
         """Return a table or create it if it doesn't exist yet.
 
         Args:
@@ -274,4 +270,6 @@ class MySQLDB:
         Returns: The Table object
 
         """
-        return table(self)
+        _table = table(self)
+        await _table.create()
+        return _table

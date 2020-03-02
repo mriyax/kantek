@@ -1,5 +1,4 @@
 """Plugin to manage the banlist of the bot."""
-import asyncio
 import csv
 import logging
 import os
@@ -56,26 +55,20 @@ async def _query_banlist(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
     reason = keyword_args.get('reason')
     users = []
     if args:
-        with db.cursor() as cursor:
-            uids = [str(uid) for uid in args]
-            sql = 'select * from `banlist` where `id` in ({})'.format(','.join(uids))
-            cursor.execute(sql)
-            users = cursor.fetchall()
-            query_results = [KeyValueItem(Code(user['id']), user['ban_reason'])
-                             for user in users] or [Italic('None')]
+        uids = [str(uid) for uid in args]
+        sql = 'select * from `banlist` where `id` in ({})'.format(','.join(uids))
+        users = await db.execute(sql, fetch='all')
+        query_results = [KeyValueItem(Code(user['id']), user['ban_reason'])
+                         for user in users] or [Italic('None')]
     elif reason is not None:
-        with db.cursor() as cursor:
-            sql = 'select count(*) as count from `banlist` where `ban_reason` like "%{}%"'.format(
-                pymysql.escape_string(reason))
-            cursor.execute(sql)
-            count = cursor.fetchone()['count']
-            query_results = [KeyValueItem(Bold('Count'), Code(count))]
+        sql = 'select count(*) as count from `banlist` where `ban_reason` like "%{}%"'.format(
+            pymysql.escape_string(reason))
+        count = (await db.execute(sql, fetch='one'))['count']
+        query_results = [KeyValueItem(Bold('Count'), Code(count))]
     else:
-        with db.cursor() as cursor:
-            sql = 'select count(*) as count from `banlist`'
-            cursor.execute(sql)
-            count = cursor.fetchone()['count']
-            query_results = [KeyValueItem(Bold('Total Count'), Code(count))]
+        sql = 'select count(*) as count from `banlist`'
+        count = (await db.execute(sql, fetch='one'))['count']
+        query_results = [KeyValueItem(Bold('Total Count'), Code(count))]
 
     return MDTeXDocument(Section(Bold('Query Results'), *query_results))
 
@@ -92,14 +85,13 @@ async def _import_banlist(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument
             start_time = time.time()
             _banlist = await helpers.rose_csv_to_dict(filename)
             if _banlist:
-                with db.cursor() as cursor:
-                    sql = 'insert into `banlist` (`id`, `ban_reason`) values (%s, %s)' \
-                          'on duplicate key update `ban_reason` = %s'
+                sql = 'insert into `banlist` (`id`, `ban_reason`) values (%s, %s)' \
+                      'on duplicate key update `ban_reason` = %s'
 
-                    for ban in _banlist:
-                        cursor.execute(sql, (ban['id'], ban['reason'], ban['id']))
+                for ban in _banlist:
+                    await db.execute(sql, ban['id'], ban['reason'], ban['id'])
 
-                db.commit()
+                await db.save()
 
                 if client.sw and client.sw.permission in [Permission.Admin, Permission.Root]:
                     bans = {}
@@ -124,17 +116,15 @@ async def _import_banlist(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument
 async def _export_banlist(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
     client: KantekClient = event.client
     chat = await event.get_chat()
-    with db.cursor() as cursor:
-        sql = 'select * from `banlist`'
-        cursor.execute(sql)
-        users = cursor.fetchall()
-        os.makedirs('tmp/', exist_ok=True)
-        start_time = time.time()
-        with open('tmp/banlist_export.csv', 'w', newline='') as f:
-            f.write('id,reason\n')
-            cwriter = csv.writer(f)
-            for user in users:
-                cwriter.writerow([user['id'], user['ban_reason']])
-        stop_time = time.time() - start_time
-        await client.send_file(chat, 'tmp/banlist_export.csv',
-                               caption=str(Italic(f'Took {stop_time:.02f}s')))
+    sql = 'select * from `banlist`'
+    users = await db.execute(sql, fetch='all')
+    os.makedirs('tmp/', exist_ok=True)
+    start_time = time.time()
+    with open('tmp/banlist_export.csv', 'w', newline='') as f:
+        f.write('id,reason\n')
+        cwriter = csv.writer(f)
+        for user in users:
+            cwriter.writerow([user['id'], user['ban_reason']])
+    stop_time = time.time() - start_time
+    await client.send_file(chat, 'tmp/banlist_export.csv',
+                           caption=str(Italic(f'Took {stop_time:.02f}s')))

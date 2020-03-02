@@ -34,7 +34,7 @@ async def gban(event: NewMessage.Event) -> None:
     msg: Message = event.message
     client: KantekClient = event.client
     keyword_args, args = await helpers.get_args(event)
-    chat_document = client.db.groups.get_chat(event.chat_id)
+    chat_document = await client.db.groups.get_chat(event.chat_id)
     db_named_tags: Dict = chat_document['named_tags']
     gban = db_named_tags.get('gban')
     verbose = False
@@ -114,7 +114,7 @@ async def ungban(event: NewMessage.Event) -> None:
 
     unbanned_users = []
     for uid in users_to_unban:
-        if client.db.banlist.get_user(uid):
+        if await client.db.banlist.get_user(uid):
             await client.ungban(uid)
             unbanned_users.append(str(uid))
     if unbanned_users:

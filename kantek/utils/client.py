@@ -76,10 +76,8 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
         if uid is None:
             return
 
-        with self.db.cursor() as cursor:
-            sql = 'select * from `banlist` where `id` = %s limit 1'
-            cursor.execute(sql, (uid,))
-            user = cursor.fetchone()
+        sql = 'select * from `banlist` where `id` = %s limit 1'
+        user = await self.db.execute(sql, uid, fetch='one')
 
         for ban_reason in AUTOMATED_BAN_REASONS:
             if user and (ban_reason in user['ban_reason']) and (ban_reason not in reason):
@@ -94,12 +92,10 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
                 message.format(uid=uid, reason=reason))
         await asyncio.sleep(0.5)
 
-        with self.db.cursor() as cursor:
-            sql = 'insert into `banlist` (`id`, `ban_reason`) values (%s, %s)'\
-                  'on duplicate key update `ban_reason` = %s'
-            cursor.execute(sql, (uid, reason, reason))
-
-        self.db.commit()
+        sql = 'insert into `banlist` (`id`, `ban_reason`) values (%s, %s)'\
+              'on duplicate key update `ban_reason` = %s'
+        await self.db.execute(sql, uid, reason, reason)
+        await self.db.save()
 
         if self.sw and self.sw.permission in [Permission.Admin,
                                               Permission.Root]:
@@ -125,11 +121,9 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
                 message.format(uid=uid))
         await asyncio.sleep(0.5)
 
-        with self.db.cursor() as cursor:
-            sql = 'delete from `banlist` where `id` = %s'
-            cursor.execute(sql, (uid,))
-
-        self.db.commit()
+        sql = 'delete from `banlist` where `id` = %s'
+        await self.db.execute(sql, uid)
+        await self.db.save()
 
         if self.sw and self.sw.permission in [Permission.Admin,
                                               Permission.Root]:

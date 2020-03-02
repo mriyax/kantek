@@ -251,19 +251,15 @@ async def _query_string(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
 
     elif hex_type is not None and code is not None:
         if isinstance(code, int):
-            with db.cursor() as cursor:
-                sql = 'select * from `{}` where `id` = %s'.format(collection.name)
-                cursor.execute(sql, (code,))
-                string = cursor.fetchone()['string']
-                return MDTeXDocument(Section(Bold(f'Items for type: {string_type}[{hex_type}] code: {code}'), Code(string)))
+            sql = 'select * from `{}` where `id` = %s'.format(collection.name)
+            string = (await db.execute(sql, code, fetch='one'))['string']
+            return MDTeXDocument(Section(Bold(f'Items for type: {string_type}[{hex_type}] code: {code}'), Code(string)))
         elif isinstance(code, range) or isinstance(code, list):
-            with db.cursor() as cursor:
-                keys = [int(i) for i in code]
-                sql = 'select * from `{}` where `id` in ({})'.format(
-                    collection.name, ','.join(keys))
-                cursor.execute(sql)
-                documents = cursor.fetchall()
-                items = [KeyValueItem(Bold(f'0x{doc["id"]}'.rjust(5)),
-                                      Code(doc['string'])) for doc in documents]
-                return MDTeXDocument(
-                    Section(Bold(f'Items for for type: {string_type}[{hex_type}]'), *items))
+            keys = [int(i) for i in code]
+            sql = 'select * from `{}` where `id` in ({})'.format(
+                collection.name, ','.join(keys))
+            documents = await db.execute(sql, fetch='all')
+            items = [KeyValueItem(Bold(f'0x{doc["id"]}'.rjust(5)),
+                                  Code(doc['string'])) for doc in documents]
+            return MDTeXDocument(
+                Section(Bold(f'Items for for type: {string_type}[{hex_type}]'), *items))

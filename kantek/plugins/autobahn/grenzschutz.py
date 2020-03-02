@@ -34,7 +34,7 @@ async def grenzschutz(event: Union[ChatAction.Event, NewMessage.Event]) -> None:
         if not chat.admin_rights.ban_users:
             return
     db: MySQLDB = client.db
-    chat_document = db.groups.get_chat(event.chat_id)
+    chat_document = await db.groups.get_chat(event.chat_id)
     db_named_tags: Dict = chat_document['named_tags']
     polizei_tag = db_named_tags.get('polizei')
     grenzschutz_tag = db_named_tags.get('grenzschutz')
@@ -55,15 +55,11 @@ async def grenzschutz(event: Union[ChatAction.Event, NewMessage.Event]) -> None:
     except ValueError as err:
         logger.error(err)
 
-    with db.cursor() as cursor:
-        sql = 'select * from `banlist` where `id` = %s'
-        cursor.execute(sql, (uid,))
-        result = cursor.fetchone()
-
-    if not result:
+    banned_user = await db.banlist.get_user(uid)
+    if not banned_user:
         return
     else:
-        ban_reason = result['ban_reason']
+        ban_reason = banned_user['ban_reason']
 
     admins = [p.id for p in (await client.get_participants(event.chat_id, filter=ChannelParticipantsAdmins()))]
     if uid not in admins:

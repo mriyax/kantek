@@ -38,7 +38,7 @@ async def polizei(event: NewMessage.Event) -> None:
     client: KantekClient = event.client
     chat: Channel = await event.get_chat()
     db: MySQLDB = client.db
-    chat_document = db.groups.get_chat(event.chat_id)
+    chat_document = await db.groups.get_chat(event.chat_id)
     db_named_tags: Dict = chat_document['named_tags']
     bancmd = db_named_tags.get('gbancmd', 'manual')
     polizei_tag = db_named_tags.get('polizei')
@@ -58,15 +58,15 @@ async def join_polizei(event: ChatAction.Event) -> None:
     client: KantekClient = event.client
     chat: Channel = await event.get_chat()
     db: MySQLDB = client.db
-    chat_document = db.groups.get_chat(event.chat_id)
+    chat_document = await db.groups.get_chat(event.chat_id)
     db_named_tags: Dict = chat_document['named_tags']
     bancmd = db_named_tags.get('gbancmd')
     polizei_tag = db_named_tags.get('polizei')
     if polizei_tag == 'exclude':
         return
     ban_type, ban_reason = False, False
-    bio_blacklist = db.ab_bio_blacklist.get_all()
-    mhash_blacklist = db.ab_mhash_blacklist.get_all()
+    bio_blacklist = await db.ab_bio_blacklist.get_all()
+    mhash_blacklist = await db.ab_mhash_blacklist.get_all()
 
     try:
         user: UserFull = await client(GetFullUserRequest(await event.get_input_user()))
@@ -97,13 +97,11 @@ async def _banuser(event, chat, userid, bancmd, ban_type, ban_reason):
     chat: Channel = await event.get_chat()
     await event.delete()
 
-    with db.cursor() as cursor:
-        sql = 'select count(*) as count from `banlist` where `id` = %s and `ban_reason` = %s'
-        cursor.execute(sql, (userid, formatted_reason))
-        count = cursor.fetchone()['count']
-        if count > 0:
-            logger.info(f'User ID `{userid}` already banned for the same reason.')
-            return
+    sql = 'select count(*) as count from `banlist` where `id` = %s and `ban_reason` = %s'
+    res = await db.execute(sql, userid, formatted_reason, fetch='one')
+    if res['count'] > 0:
+        logger.info(f'User ID `{userid}` already banned for the same reason.')
+        return
 
     if chat.creator or chat.admin_rights:
         if bancmd == 'manual':
@@ -151,11 +149,11 @@ async def _check_message(event):
             return False, False
 
     db: MySQLDB = client.db
-    string_blacklist = db.ab_string_blacklist.get_all()
-    channel_blacklist = db.ab_channel_blacklist.get_all()
-    domain_blacklist = db.ab_domain_blacklist.get_all()
-    file_blacklist = db.ab_file_blacklist.get_all()
-    mhash_blacklist = db.ab_mhash_blacklist.get_all()
+    string_blacklist = await db.ab_string_blacklist.get_all()
+    channel_blacklist = await db.ab_channel_blacklist.get_all()
+    domain_blacklist = await db.ab_domain_blacklist.get_all()
+    file_blacklist = await db.ab_file_blacklist.get_all()
+    mhash_blacklist = await db.ab_mhash_blacklist.get_all()
 
     inline_bot = msg.via_bot_id
     if inline_bot is not None and inline_bot in channel_blacklist:

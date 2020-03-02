@@ -32,7 +32,7 @@ tlog.setLevel(logging.INFO)
 __version__ = '0.3.1'
 
 
-async def create_client(session_name, *, login=False, bot=False, phone_number=None) -> KantekClient:
+async def create_client(session_name, *, login=False, bot=False, phone_number=None, db=None) -> KantekClient:
     """Create a kantek client."""
     client = KantekClient(
         session_name,
@@ -48,8 +48,8 @@ async def create_client(session_name, *, login=False, bot=False, phone_number=No
         await client.start()
         client.kantek_version = __version__
         client.plugin_mgr = PluginManager(client)
-        client.db = MySQLDB()
         client.plugin_mgr.register_all()
+        client.db = db
 
         if spamwatch_host and spamwatch_token:
             client.sw = spamwatch.Client(spamwatch_token, host=spamwatch_host)
@@ -74,12 +74,14 @@ async def main() -> None:
         return
 
     clients = []
+    db = MySQLDB()
+    await db.connect()
 
     for _, __, files in os.walk(session_path):
         for file in files:
             if file.endswith('.session'):
                 session_name = f'{session_path}/{file[:-len(".session")]}'
-                client = await create_client(session_name)
+                client = await create_client(session_name, db=db)
                 clients.append(client)
 
     tlog.info('Started kantek v%s', __version__)
@@ -88,14 +90,13 @@ async def main() -> None:
     await asyncio.wait([client.run_until_disconnected() for client in clients],
                        return_when=concurrent.futures.FIRST_COMPLETED)
 
+    db.disconnect()
     for client in clients:
         await client.disconnect()
 
     if spamwatch_host and spamwatch_token:
         client.sw = spamwatch.Client(spamwatch_token, host=spamwatch_host)
         client.sw_url = spamwatch_host
-
-    client.run_until_disconnected()
 
 
 if __name__ == '__main__':

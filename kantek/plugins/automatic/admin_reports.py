@@ -39,7 +39,7 @@ async def admin_reports(event: NewMessage.Event) -> None:
     user: User = await event.get_sender()
     reply: Message = await event.get_reply_message()
     db: MySQLDB = client.db
-    chat_document = db.groups.get_chat(event.chat_id)
+    chat_document = await db.groups.get_chat(event.chat_id)
     db_named_tags: Dict = chat_document['named_tags']
     reports_tag = db_named_tags.get('reports')
     if reports_tag == 'exclude':

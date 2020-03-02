@@ -33,7 +33,7 @@ async def tag(event: NewMessage.Event) -> None:
     client: KantekClient = event.client
     db: MySQLDB = client.db
     msg: Message = event.message
-    tag_mgr = TagManager(event)
+    tag_mgr = await TagManager.load(event)
     args = msg.raw_text.split()[1:]
     response = ''
     if not args:
@@ -49,7 +49,7 @@ async def tag(event: NewMessage.Event) -> None:
     elif args[0] == 'add' and len(args) > 1:
         await _add_tags(event)
     elif args[0] == 'clear':
-        tag_mgr.clear()
+        await tag_mgr.clear()
     elif args[0] == 'del' and len(args) > 1:
         await _delete_tags(event)
     if not response:
@@ -68,12 +68,12 @@ async def _add_tags(event: NewMessage.Event):
     """
     msg: Message = event.message
     args = msg.raw_text.split()[2:]
-    tag_mgr = TagManager(event)
+    tag_mgr = await TagManager.load(event)
     named_tags, tags = parsers.parse_arguments(' '.join(args))
     for name, value in named_tags.items():
-        tag_mgr[name] = value
+        await tag_mgr.set_tag(name, value)
     for _tag in tags:
-        tag_mgr.set_tag(_tag)
+        await tag_mgr.set_tag(_tag)
 
 
 async def _delete_tags(event: NewMessage.Event):
@@ -85,8 +85,8 @@ async def _delete_tags(event: NewMessage.Event):
     Returns: A string with the action taken.
     """
     msg: Message = event.message
-    tag_mgr = TagManager(event)
+    tag_mgr = await TagManager.load(event)
     args = msg.raw_text.split()[2:]
     _, args = parsers.parse_arguments(' '.join(args))
     for arg in args:
-        del tag_mgr[arg]
+        await tag_mgr.del_tag(arg)

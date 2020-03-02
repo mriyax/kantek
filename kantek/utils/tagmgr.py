@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import Optional, Union
 
@@ -10,14 +11,17 @@ TagName = Union[int, str]
 
 
 class TagManager:
-    def __init__(self, event: NewMessage.Event):
+    @classmethod
+    async def load(cls, event: NewMessage.Event):
+        self = TagManager()
         self._client: KantekClient = event.client
         self._db = self._client.db
         self.chat_id = event.chat_id
         self._collection = self._db.groups
-        self._document = self._collection.get_chat(self.chat_id)
+        self._document = await self._collection.get_chat(self.chat_id)
         self.named_tags = self._document['named_tags']
         self.tags = self._document['tags']
+        return self
 
     def get_tag(self, tag_name: TagName) -> Optional[TagValue]:
         """Get a Tags Value
@@ -36,7 +40,7 @@ class TagManager:
     def __getitem__(self, item: TagName) -> TagValue:
         return self.get_tag(item)
 
-    def set_tag(self, tag_name: TagName, value: Optional[TagValue] = None) -> None:
+    async def set_tag(self, tag_name: TagName, value: Optional[TagValue] = None) -> None:
         """Set a tags value or create it.
         If value is None a normal tag will be created. If the value is not None a named tag with
          that value will be created
@@ -52,18 +56,15 @@ class TagManager:
                 self.tags.append(tag_name)
         elif value is not None:
             self.named_tags[tag_name] = value
-        self._save()
+        await self._save()
 
-    def __setitem__(self, key: TagName, value: TagValue) -> None:
-        self.set_tag(key, value)
-
-    def clear(self) -> None:
+    async def clear(self) -> None:
         """Clears all tags that a Chat has."""
         self.named_tags = {}
         self.tags = []
-        self._save()
+        await self._save()
 
-    def del_tag(self, tag_name: TagName) -> None:
+    async def del_tag(self, tag_name: TagName) -> None:
         """Delete a tag.
 
         Args:
@@ -76,17 +77,12 @@ class TagManager:
             del self.tags[self.tags.index(tag_name)]
         elif tag_name in self.named_tags:
             del self.named_tags[tag_name]
-        self._save()
+        await self._save()
 
-    def __delitem__(self, key: TagName) -> None:
-        self.del_tag(key)
-
-    def _save(self):
+    async def _save(self):
         tags = json.dumps(self.tags)
         named_tags = json.dumps(self.named_tags)
 
-        with self._db.cursor() as cursor:
-            sql = 'update `chats` set `tags` = %s, `named_tags` = %s where `id` = %s'
-            cursor.execute(sql, (tags, named_tags, self.chat_id))
-
-        self._db.commit()
+        sql = 'update `chats` set `tags` = %s, `named_tags` = %s where `id` = %s'
+        await self._db.execute(sql, tags, named_tags, self.chat_id)
+        await self._db.save()

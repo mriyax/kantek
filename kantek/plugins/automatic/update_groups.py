@@ -24,4 +24,4 @@ async def add_groups(event: NewMessage.Event) -> None:
     if event.is_private:
         return
     client: KantekClient = event.client
-    client.db.groups.get_chat(event.chat_id)
+    await client.db.groups.get_chat(event.chat_id)

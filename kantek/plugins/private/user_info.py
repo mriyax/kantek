@@ -131,7 +131,7 @@ async def _collect_user_info(client, user, **kwargs) -> Union[Section, KeyValueI
     else:
         title = Bold(full_name)
 
-    ban_reason = client.db.banlist.get_user(user.id)
+    ban_reason = await client.db.banlist.get_user(user.id)
     if ban_reason:
         ban_reason = ban_reason['ban_reason']
 
