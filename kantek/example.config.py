@@ -10,6 +10,15 @@ log_bot_token: str = ''
 log_channel_id: Union[str, int] = ''
 
 gban_group = ''
+gban_sender_session = 'kantek-session'
+gban_messages = (
+    '/gban {uid} {reason}',
+    '/fban {uid} {reason}'
+)
+ungban_messages = (
+    '/ungban {uid}',
+    '/unfban {uid}'
+)
 
 # This is regex so make sure to escape the usual characters
 cmd_prefix: str = r'\.'

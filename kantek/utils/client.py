@@ -30,6 +30,7 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
     """Custom telethon client that has the plugin manager as attribute."""
     plugin_mgr: Optional[PluginManager] = None
     db: Optional[MySQLDB] = None
+    gban_sender: Optional['KantekClient'] = None
     kantek_version: str = ''
     sw: spamwatch.Client = None
     sw_url: str = None
@@ -83,11 +84,11 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
             if user and (ban_reason in user['ban_reason']) and (ban_reason not in reason):
                 return False
 
-        await self.send_message(
+        await self.gban_sender.send_message(
             config.gban_group,
             f'<a href="tg://user?id={uid}">{uid}</a>', parse_mode='html')
         for message in config.gban_messages:
-            await self.send_message(
+            await self.gban_sender.send_message(
                 config.gban_group,
                 message.format(uid=uid, reason=reason))
         await asyncio.sleep(0.5)
@@ -112,11 +113,11 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
         Returns: None
 
         """
-        await self.send_message(
+        await self.gban_sender.send_message(
             config.gban_group,
             f'<a href="tg://user?id={uid}">{uid}</a>', parse_mode='html')
         for message in config.ungban_messages:
-            await self.send_message(
+            await self.gban_sender.send_message(
                 config.gban_group,
                 message.format(uid=uid))
         await asyncio.sleep(0.5)

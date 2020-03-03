@@ -32,7 +32,7 @@ tlog.setLevel(logging.INFO)
 __version__ = '0.3.1'
 
 
-async def create_client(session_name, *, login=False, bot=False, phone_number=None, db=None) -> KantekClient:
+async def create_client(session_name, *, login=False, bot=False, phone_number=None, db=None, gban_sender=None) -> KantekClient:
     """Create a kantek client."""
     client = KantekClient(
         session_name,
@@ -50,6 +50,7 @@ async def create_client(session_name, *, login=False, bot=False, phone_number=No
         client.plugin_mgr = PluginManager(client)
         client.plugin_mgr.register_all()
         client.db = db
+        client.gban_sender = gban_sender
 
         if spamwatch_host and spamwatch_token:
             client.sw = spamwatch.Client(spamwatch_token, host=spamwatch_host)
@@ -60,6 +61,7 @@ async def create_client(session_name, *, login=False, bot=False, phone_number=No
 async def main() -> None:
     """Register logger and components."""
     session_path = os.path.relpath(config.session_path)
+    gban_sender = config.gban_sender_session
     parser = ArgumentParser()
     parser.add_argument('-l', '--login', nargs=2, metavar=('name', 'number'),
                         help='Create a new Telegram session')
@@ -77,11 +79,15 @@ async def main() -> None:
     db = MySQLDB()
     await db.connect()
 
+    session_name = f'{session_path}/{gban_sender}'
+    gban_sender_client = await create_client(session_name, db=db)
+    clients.append(gban_sender_client)
+
     for _, __, files in os.walk(session_path):
         for file in files:
-            if file.endswith('.session'):
+            if file.endswith('.session') and file != f'{gban_sender}.session':
                 session_name = f'{session_path}/{file[:-len(".session")]}'
-                client = await create_client(session_name, db=db)
+                client = await create_client(session_name, db=db, gban_sender=gban_sender_client)
                 clients.append(client)
 
     tlog.info('Started kantek v%s', __version__)
