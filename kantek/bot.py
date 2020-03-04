@@ -50,7 +50,7 @@ async def create_client(session_name, *, login=False, bot=False, phone_number=No
         client.plugin_mgr = PluginManager(client)
         client.plugin_mgr.register_all()
         client.db = db
-        client.gban_sender = gban_sender
+        client.gban_sender = client if gban_sender is None else gban_sender
 
         if spamwatch_host and spamwatch_token:
             client.sw = spamwatch.Client(spamwatch_token, host=spamwatch_host)
