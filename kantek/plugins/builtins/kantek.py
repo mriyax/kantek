@@ -16,7 +16,7 @@ tlog = logging.getLogger('kantek-channel-log')
 
 
 @events.register(events.NewMessage(outgoing=True, pattern=f'{cmd_prefix}kantek'))
-async def tag(event: NewMessage.Event) -> None:
+async def kantek(event: NewMessage.Event) -> None:
     """Show information about kantek.
 
     Args:
