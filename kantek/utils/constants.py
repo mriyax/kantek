@@ -1,8 +1,9 @@
 from telethon.errors import UsernameInvalidError, UsernameNotOccupiedError
 
 TELEGRAM_DOMAINS = ['t.me',
-                    'telegram.org',
                     'telegram.dog',
+                    'telegram.me',
+                    'telegram.org',
                     'telegra.ph',
                     'tdesktop.com',
                     'telesco.pe',
