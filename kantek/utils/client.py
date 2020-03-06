@@ -94,6 +94,7 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
                 config.gban_group,
                 message.format(uid=uid, reason=reason))
         await asyncio.sleep(0.5)
+        await self.send_read_acknowledge(config.gban_group, max_id=0, clear_mentions=True)
 
         sql = 'insert into `banlist` (`id`, `ban_reason`) values (%s, %s)'\
               'on duplicate key update `ban_reason` = %s'
@@ -123,6 +124,7 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
                 config.gban_group,
                 message.format(uid=uid))
         await asyncio.sleep(0.5)
+        await self.send_read_acknowledge(config.gban_group, max_id=0, clear_mentions=True)
 
         sql = 'delete from `banlist` where `id` = %s'
         await self.db.execute(sql, uid)
