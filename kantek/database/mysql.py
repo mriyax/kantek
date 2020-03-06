@@ -79,49 +79,49 @@ class AutobahnBlacklist:
         )'''.format(self.name))
         await self.db.save()
 
-    async def add_string(self, string: str) -> Dict:
+    async def add_item(self, item: str) -> Dict:
         """Add a Chat to the DB or return an existing one.
 
         Args:
-            string: The id of the chat
+            item: The id of the chat
 
         Returns: The Document
 
         """
         sql = 'insert ignore into `{}` (`string`) values (%s)'.format(self.name)
-        await self.db.execute(sql, string)
+        await self.db.execute(sql, item)
         await self.db.save()
 
         sql = 'select * from `{}` where `string` = %s'.format(self.name)
-        return await self.db.execute(sql, string, fetch='one')
+        return await self.db.execute(sql, item, fetch='one')
 
-    async def delete_string(self, string: str) -> None:
+    async def delete_item(self, item: str) -> None:
         """Delete a Chat from the DB.
 
         Args:
-            string: The id of the chat
+            item: The id of the chat
 
         Returns: None
 
         """
         sql = 'delete from `{}` where `string` = %s'.format(self.name)
-        await self.db.execute(sql, string)
+        await self.db.execute(sql, item)
         await self.db.save()
 
-    async def get_string(self, string: str) -> Dict:
+    async def get_item(self, item: str) -> Dict:
         """Get a Chat from the DB or return an existing one.
 
         Args:
-            string: The id of the chat
+            item: The id of the chat
 
         Returns: The Document
 
         """
         sql = 'select * from `{}` where `string` = %s'.format(self.name)
-        return await self.db.execute(sql, string, fetch='one')
+        return await self.db.execute(sql, item, fetch='one')
 
     async def get_all(self) -> Dict:
-        """Get all strings in the Blacklist."""
+        """Get all items in the Blacklist."""
         sql = 'select * from `{}`'.format(self.name)
         docs = await self.db.execute(sql, fetch='all')
         return {doc['string']: doc['id'] for doc in docs}
@@ -140,7 +140,7 @@ class AutobahnStringBlacklist(AutobahnBlacklist):
 
 
 class AutobahnFilenameBlacklist(AutobahnBlacklist):
-    """Blacklist with strings in a Filename"""
+    """Blacklist with strings in a filename"""
     name = 'filename_blacklist'
     hex_type = '0x2'
 
@@ -158,13 +158,13 @@ class AutobahnDomainBlacklist(AutobahnBlacklist):
 
 
 class AutobahnFileBlacklist(AutobahnBlacklist):
-    """Blacklist with blacklisted domains"""
+    """Blacklist with blacklisted files"""
     name = 'file_blacklist'
     hex_type = '0x5'
 
 
 class AutobahnMHashBlacklist(AutobahnBlacklist):
-    """Blacklist with blacklisted domains"""
+    """Blacklist with media hashes"""
     name = 'mhash_blacklist'
     hex_type = '0x6'
 

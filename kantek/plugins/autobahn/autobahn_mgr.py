@@ -129,7 +129,7 @@ async def _add_item(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
             skipped_items.append(item)
             continue
 
-        existing_one = await collection.get_string(string)
+        existing_one = await collection.get_item(item)
 
         if not existing_one:
             await collection.add_item(item)
@@ -148,11 +148,11 @@ async def _add_item(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
                 file_hash = await helpers.hash_file(dl_filename)
                 os.remove(dl_filename)
                 await msg.delete()
-                existing_one = collection.get_string(file_hash)
+                existing_one = await collection.get_item(file_hash)
 
                 short_hash = f'{file_hash[:15]}[...]'
                 if not existing_one:
-                    collection.add_item(file_hash)
+                    await collection.add_item(file_hash)
                     added_items.append(Code(short_hash))
                 else:
                     existing_items.append(Code(short_hash))
@@ -169,10 +169,10 @@ async def _add_item(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
                 dl_photo = await reply_msg.download_media(bytes)
                 photo_hash = await helpers.hash_photo(dl_photo)
                 await msg.delete()
-                existing_one = collection.get_string(photo_hash)
+                existing_one = await collection.get_item(photo_hash)
 
                 if not existing_one:
-                    collection.add_item(photo_hash)
+                    await collection.add_item(photo_hash)
                     if Counter(photo_hash).get('0', 0) > 8:
                         warn_message = 'The image seems to contain a lot of the same color. This might lead to false positives.'
 
@@ -218,10 +218,10 @@ async def _del_item(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
             link_creator, chat_id, random_part = await helpers.resolve_invite_link(item)
             item = chat_id
 
-        existing_one = await collection.get_string(string)
+        existing_one = await collection.get_item(item)
         if existing_one:
-            await collection.delete_string(string)
-            removed_items.append(string)
+            await collection.delete_item(item)
+            removed_items.append(item)
 
     return MDTeXDocument(Section(Bold('Deleted Items:'),
                                  SubSection(Bold(item_type),
