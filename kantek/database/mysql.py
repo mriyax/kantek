@@ -169,6 +169,12 @@ class AutobahnMHashBlacklist(AutobahnBlacklist):
     hex_type = '0x6'
 
 
+class AutobahnTLDBlacklist(AutobahnBlacklist):
+    """Blacklist with blacklisted top level domains"""
+    name = 'mhash_blacklist'
+    hex_type = '0x7'
+
+
 class BanList:
     """A list of banned ids and their reason"""
     name = 'banlist'
@@ -226,7 +232,8 @@ class MySQLDB:
             '0x3': self.ab_channel_blacklist,
             '0x4': self.ab_domain_blacklist,
             '0x5': self.ab_file_blacklist,
-            '0x6': self.ab_mhash_blacklist
+            '0x6': self.ab_mhash_blacklist,
+            '0x7': self.ab_tld_blacklist
         }
 
     async def _create_tables(self):
@@ -238,6 +245,7 @@ class MySQLDB:
         self.ab_domain_blacklist = await self._get_table(AutobahnDomainBlacklist)
         self.ab_file_blacklist = await self._get_table(AutobahnFileBlacklist)
         self.ab_mhash_blacklist = await self._get_table(AutobahnMHashBlacklist)
+        self.ab_tld_blacklist = await self._get_table(AutobahnTLDBlacklist)
         self.banlist = await self._get_table(BanList)
 
     async def save(self):
