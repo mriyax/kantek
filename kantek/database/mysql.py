@@ -171,7 +171,7 @@ class AutobahnMHashBlacklist(AutobahnBlacklist):
 
 class AutobahnTLDBlacklist(AutobahnBlacklist):
     """Blacklist with blacklisted top level domains"""
-    name = 'mhash_blacklist'
+    name = 'tld_blacklist'
     hex_type = '0x7'
 
 
