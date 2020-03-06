@@ -76,7 +76,7 @@ async def _file_callback(received: int, total: int, msg: Message) -> None:
         logger.error(err)
 
 
-async def _add_item(event: NewMessage.Event, db: ArangoDB) -> MDTeXDocument:
+async def _add_item(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
     """Add an item to the Collection of its type"""
     client: KantekClient = event.client
     msg: Message = event.message
@@ -200,7 +200,7 @@ async def _add_item(event: NewMessage.Event, db: ArangoDB) -> MDTeXDocument:
                          )
 
 
-async def _del_item(event: NewMessage.Event, db: ArangoDB) -> MDTeXDocument:
+async def _del_item(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
     """Add an item to the Collection of its type"""
     msg: Message = event.message
     args = msg.raw_text.split()[2:]
@@ -228,7 +228,7 @@ async def _del_item(event: NewMessage.Event, db: ArangoDB) -> MDTeXDocument:
                                             *removed_items)))
 
 
-async def _query_item(event: NewMessage.Event, db: ArangoDB) -> MDTeXDocument:
+async def _query_item(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
     """Add an item to the Collection of its type"""
     msg: Message = event.message
     args = msg.raw_text.split()[2:]
