@@ -2,6 +2,8 @@
 import asyncio
 import datetime
 import logging
+import socket
+import time
 from typing import Optional, Union
 
 import logzero
@@ -163,14 +165,15 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
             url = f'http://{url}'
         try:
             async with self.aioclient.get(url, headers=headers) as response:
-                url = response.url.host
-        except (ClientError, asyncio.TimeoutError) as err:
+                url = response.url
+        except (ClientError, asyncio.TimeoutError, socket.gaierror) as err:
             logger.warning(err)
             return old_url
 
         if base_domain:
             # split up the result to only get the base domain
             # www.sitischu.com => sitischu.com
+            url = url.host
             _base_domain = url.split('.', maxsplit=url.count('.') - 1)[-1]
             if _base_domain:
                 url = _base_domain

@@ -65,7 +65,7 @@ class Mention(Link):
 
 
 class KeyValueItem(FormattedBase):
-    """A item that has a key and a value divided by a colon."""
+    """An item that has a key and a value divided by a colon."""
 
     def __init__(self, key: String, value: String) -> None:
         self.key = key
