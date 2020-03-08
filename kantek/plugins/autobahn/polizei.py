@@ -106,12 +106,7 @@ async def _banuser(event, chat, userid, bancmd, ban_type, ban_reason):
 
     if chat.creator or chat.admin_rights:
         if bancmd == 'manual':
-            await client(EditBannedRequest(
-                chat, userid, ChatBannedRights(
-                    until_date=datetime.datetime(2038, 1, 1),
-                    view_messages=True
-                )
-            ))
+            await client.ban(chat, userid)
         elif bancmd is not None:
             await client.respond(event, f'{bancmd} {userid} {formatted_reason}')
             await asyncio.sleep(0.25)
@@ -155,7 +150,7 @@ async def _check_message(event):
     domain_blacklist = await db.ab_domain_blacklist.get_all()
     file_blacklist = await db.ab_file_blacklist.get_all()
     mhash_blacklist = await db.ab_mhash_blacklist.get_all()
-    tld_blacklist = await db.ab_tld_blacklist.get_all()
+    # tld_blacklist = await db.ab_tld_blacklist.get_all()
     linkpreview_blacklist = await db.ab_linkpreview_blacklist.get_all()
 
     inline_bot = msg.via_bot_id
@@ -187,9 +182,9 @@ async def _check_message(event):
                 if domain in domain_blacklist:
                     return db.ab_domain_blacklist.hex_type, domain_blacklist[domain]
 
-                tld_index = await _check_tld(domain, tld_blacklist)
-                if tld_index:
-                    return db.ab_tld_blacklist.hex_type, tld_index
+                # tld_index = await _check_tld(domain, tld_blacklist)
+                # if tld_index:
+                #     return db.ab_tld_blacklist.hex_type, tld_index
 
                 face_domain = await helpers.netloc(button.url)
                 if face_domain in domain_blacklist:
@@ -216,21 +211,31 @@ async def _check_message(event):
             if domain in constants.TELEGRAM_DOMAINS:
                 # remove any query parameters like ?start=
                 # replace @ since some spammers started using it, only Telegram X supports it
-                username = text.split('?')[0].replace('@', '')
+                url = await client.resolve_url(text, base_domain=False)
+                username = url.split('?')[0].replace('@', '')
                 _entity = username
 
         elif isinstance(entity, MessageEntityTextUrl):
             domain = await client.resolve_url(entity.url)
             face_domain = await helpers.netloc(entity.url)
             if domain in constants.TELEGRAM_DOMAINS:
-                username = entity.url.split('?')[0].replace('@', '')
+                url = await client.resolve_url(entity.url, base_domain=False)
+                username = url.split('?')[0].replace('@', '')
                 _entity = username
+
         elif isinstance(entity, MessageEntityMention):
             _entity = text
 
         if _entity:
             try:
-                channel = (await client.get_cached_entity(_entity)).id
+                full_entity = await client.get_cached_entity(_entity)
+                channel = full_entity.id
+                profile_photo = await client.download_profile_photo(full_entity, bytes)
+                photo_hash = await hash_photo(profile_photo)
+
+                for mhash in mhash_blacklist:
+                    if hashes_are_similar(mhash, photo_hash, tolerance=2):
+                        return db.ab_mhash_blacklist.hex_type, mhash_blacklist[mhash]
             except constants.GET_ENTITY_ERRORS as err:
                 logger.error(err)
 
@@ -241,18 +246,18 @@ async def _check_message(event):
         if domain:
             if domain in domain_blacklist:
                 return db.ab_domain_blacklist.hex_type, domain_blacklist[domain]
-            else:
-                tld_index = await _check_tld(domain, tld_blacklist)
-                if tld_index:
-                    return db.ab_tld_blacklist.hex_type, tld_index
+            # else:
+                # tld_index = await _check_tld(domain, tld_blacklist)
+                # if tld_index:
+                #     return db.ab_tld_blacklist.hex_type, tld_index
 
         if face_domain:
             if face_domain in domain_blacklist:
                 return db.ab_domain_blacklist.hex_type, domain_blacklist[face_domain]
-            else:
-                tld_index = await _check_tld(face_domain, tld_blacklist)
-                if tld_index:
-                    return db.ab_tld_blacklist.hex_type, tld_index
+            # else:
+                # tld_index = await _check_tld(face_domain, tld_blacklist)
+                # if tld_index:
+                #     return db.ab_tld_blacklist.hex_type, tld_index
 
         if channel and channel in channel_blacklist:
             return db.ab_channel_blacklist.hex_type, channel_blacklist[channel]
@@ -284,9 +289,9 @@ async def _check_message(event):
     return False, False
 
 
-async def _check_tld(domain, tld_blacklist):
-    domain, tld = domain.split('.')
-    if tld in tld_blacklist and domain != 'nic':
-        return tld_blacklist[tld]
-    else:
-        return False
+# async def _check_tld(domain, tld_blacklist):
+#     domain, tld = domain.split('.')
+#     if tld in tld_blacklist and domain != 'nic':
+#         return tld_blacklist[tld]
+#     else:
+#         return False
