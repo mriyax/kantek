@@ -1,5 +1,6 @@
 """Plugin to manage the autobahn"""
 import asyncio
+import json
 import logging
 import os
 import re
@@ -32,6 +33,7 @@ AUTOBAHN_TYPES = {
     'file': '0x5',
     'mhash': '0x6',
     'tld': '0x7',
+    'linkpreview': '0x8',
     'preemptive': '0x9'
 }
 
@@ -81,9 +83,10 @@ async def _add_item(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
     client: KantekClient = event.client
     msg: Message = event.message
     args = msg.raw_text.split()[2:]
-    _, args = parsers.parse_arguments(' '.join(args))
+    keyword_args, args = parsers.parse_arguments(' '.join(args))
     item_type = args[0]
     items = args[1:]
+    domains = keyword_args.get('domains')
     added_items = []
     existing_items = []
     skipped_items = []
@@ -124,6 +127,8 @@ async def _add_item(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
                 continue
         elif hex_type == '0x7':
             item = item.replace('.', '')
+        elif hex_type == '0x8':
+            item = json.dumps({'domains': domains, 'string': item})
         # avoids "null" being added to the db
         if item is None:
             skipped_items.append(item)

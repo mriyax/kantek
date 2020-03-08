@@ -2,6 +2,7 @@
 import asyncio
 import datetime
 import itertools
+import json
 import logging
 import os
 import uuid
@@ -155,10 +156,22 @@ async def _check_message(event):
     file_blacklist = await db.ab_file_blacklist.get_all()
     mhash_blacklist = await db.ab_mhash_blacklist.get_all()
     tld_blacklist = await db.ab_tld_blacklist.get_all()
+    linkpreview_blacklist = await db.ab_linkpreview_blacklist.get_all()
 
     inline_bot = msg.via_bot_id
     if inline_bot is not None and inline_bot in channel_blacklist:
         return db.ab_channel_blacklist.hex_type, channel_blacklist[inline_bot]
+
+    if msg.web_preview:
+        domain = await helpers.netloc(msg.web_preview.url)
+        title = (msg.web_preview.title or '').lower()
+        description = (msg.web_preview.description or '').lower()
+
+        for item in linkpreview_blacklist:
+            _item = json.loads(item)
+            if (_item['domains'] is None or domain in _item['domains']) and\
+               (_item['string'] in title or _item['string'] in description):
+                return db.ab_linkpreview_blacklist.hex_type, linkpreview_blacklist[item]
 
     if msg.buttons:
         _buttons = await msg.get_buttons()
