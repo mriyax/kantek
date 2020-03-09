@@ -265,7 +265,7 @@ async def _query_item(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
             string = (await db.execute(sql, code, fetch='one'))['string']
             return MDTeXDocument(Section(Bold(f'Items for type: {item_type}[{hex_type}] code: {code}'), Code(string)))
         elif isinstance(code, range) or isinstance(code, list):
-            keys = [int(i) for i in code]
+            keys = [str(i) for i in code]
             sql = 'select * from `{}` where `id` in ({})'.format(
                 collection.name, ','.join(keys))
             documents = await db.execute(sql, fetch='all')
