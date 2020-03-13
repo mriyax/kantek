@@ -251,7 +251,7 @@ async def _query_item(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
         hex_type = AUTOBAHN_TYPES.get(item_type)
         collection = db.ab_collection_map[hex_type]
     if code is None:
-        all_strings = collection.get_all()
+        all_strings = await collection.get_all()
         if not len(all_strings) > 100:
             items = [KeyValueItem(Bold(f'0x{doc["id"]}'.rjust(5)),
                                   Code(doc['string'])) for doc in all_strings]
