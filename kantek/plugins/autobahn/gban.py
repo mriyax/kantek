@@ -2,7 +2,7 @@
 import asyncio
 import datetime
 import logging
-from typing import Dict
+from typing import Dict, Optional
 
 import logzero
 from telethon import events
@@ -84,8 +84,11 @@ async def gban(event: NewMessage.Event) -> None:
 
         skipped_uids = []
         banned_uids = []
+        progress_message: Optional[Message]
         if verbose and len(uids) > 10:
             progress_message: Message = await client.send_message(chat, f"Processing {len(uids)} User IDs")
+        else:
+            progress_message = None
         while uids:
             uid_batch = uids[:CHUNK_SIZE]
             for uid in uid_batch:
@@ -98,11 +101,11 @@ async def gban(event: NewMessage.Event) -> None:
                 await asyncio.sleep(0.5)
             uids = uids[CHUNK_SIZE:]
             if uids:
-                if verbose:
+                if progress_message:
                     await progress_message.edit(f"Sleeping for 10 seconds after banning {len(uid_batch)} Users. {len(uids)} Users left.")
                 await asyncio.sleep(10)
 
-        if verbose:
+        if progress_message:
             await progress_message.delete()
 
         if verbose:
