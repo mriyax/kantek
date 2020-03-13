@@ -108,6 +108,7 @@ venv.bak/
 .idea
 
 sessions
+sessions.json
 config.py
 kantek/tmp
 *.spjson

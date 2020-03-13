@@ -1,15 +1,17 @@
 """Main bot module. Setup logging, register components"""
 import asyncio
 import concurrent
+import json
 import logging
 import os
 import sys
 from argparse import ArgumentParser
 
 import logzero
+import spamwatch
+from telethon.sessions import StringSession
 
 import config
-import spamwatch
 from database.mysql import MySQLDB
 from utils.client import KantekClient
 from utils.loghandler import TGChannelLogHandler
@@ -32,10 +34,10 @@ tlog.setLevel(logging.INFO)
 __version__ = '0.3.1'
 
 
-async def create_client(session_name, *, login=False, bot=False, phone_number=None, db=None, gban_sender=None) -> KantekClient:
+async def create_client(string_session, *, login=False, bot=False, phone_number=None, db=None, gban_sender=None) -> KantekClient:
     """Create a kantek client."""
     client = KantekClient(
-        session_name,
+        StringSession(string_session),
         config.api_id,
         config.api_hash)
 
@@ -70,25 +72,30 @@ async def main() -> None:
 
     if args.login:
         name, phone_number = args.login
-        client = await create_client(f'{session_path}/{name}', login=True,
-                                     bot=args.bot, phone_number=phone_number)
+        client = await create_client('', login=True, bot=args.bot, phone_number=phone_number)
+        string_session = client.session.save()
         await client.disconnect()
+
+        with open('sessions.json', 'w') as f:
+            sessions = json.load(f)
+            sessions[name] = string_session
+            json.dump(sessions, f)
         return
 
     clients = []
     db = MySQLDB()
     await db.connect()
 
-    session_name = f'{session_path}/{gban_sender}'
-    gban_sender_client = await create_client(session_name, db=db)
-    clients.append(gban_sender_client)
+    with open('sessions.json', 'r') as f:
+        sessions = json.load(f)
 
-    for _, __, files in os.walk(session_path):
-        for file in files:
-            if file.endswith('.session') and file != f'{gban_sender}.session':
-                session_name = f'{session_path}/{file[:-len(".session")]}'
-                client = await create_client(session_name, db=db, gban_sender=gban_sender_client)
-                clients.append(client)
+        gban_sender_client = await create_client(sessions.get(gban_sender, ''), db=db)
+        clients.append(gban_sender_client)
+        del sessions[gban_sender]
+
+        for string_session in sessions.values():
+            client = await create_client(string_session, db=db, gban_sender=gban_sender_client)
+            clients.append(client)
 
     tlog.info('Started kantek v%s', __version__)
     logger.info('Started kantek v%s', __version__)
