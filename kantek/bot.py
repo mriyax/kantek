@@ -76,8 +76,9 @@ async def main() -> None:
         string_session = client.session.save()
         await client.disconnect()
 
-        with open('sessions.json', 'w') as f:
+        with open('sessions.json', 'r+') as f:
             sessions = json.load(f)
+            f.seek(0)
             sessions[name] = string_session
             json.dump(sessions, f)
         return
