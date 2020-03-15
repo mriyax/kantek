@@ -1,4 +1,4 @@
-from telethon.errors import UsernameInvalidError, UsernameNotOccupiedError
+from telethon.errors import UsernameInvalidError, UsernameNotOccupiedError, InviteHashInvalidError
 
 TELEGRAM_DOMAINS = ['t.me',
                     'telegram.dog',
@@ -10,4 +10,4 @@ TELEGRAM_DOMAINS = ['t.me',
                     'graph.org',
                     'contest.dev']
 
-GET_ENTITY_ERRORS = (UsernameNotOccupiedError, UsernameInvalidError, ValueError)
+GET_ENTITY_ERRORS = (UsernameNotOccupiedError, UsernameInvalidError, ValueError, InviteHashInvalidError)

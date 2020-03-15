@@ -1,4 +1,5 @@
 """File containing the Custom TelegramClient"""
+import ast
 import asyncio
 import datetime
 import logging
@@ -7,7 +8,7 @@ from typing import Optional, Union
 
 import logzero
 import spamwatch
-from aiohttp import ClientTimeout, ClientSession, ClientError
+from aiohttp import ClientError, ClientSession, ClientTimeout
 from faker import Faker
 from spamwatch.types import Permission
 from telethon import TelegramClient, hints
@@ -15,10 +16,12 @@ from telethon.errors import UserAdminInvalidError
 from telethon.events import ChatAction, NewMessage
 from telethon.tl.custom import Message
 from telethon.tl.functions.channels import EditBannedRequest
+from telethon.tl.patched import Message
 from telethon.tl.types import ChatBannedRights
 from yarl import URL
 
 import config
+from config import cmd_prefix
 from database.mysql import MySQLDB
 from utils.mdtex import FormattedBase, MDTeXDocument, Section
 from utils.pluginmgr import PluginManager
@@ -44,13 +47,16 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
 
     async def respond(self, event: NewMessage.Event,
                       msg: Union[str, FormattedBase, Section, MDTeXDocument],
-                      reply: bool = True, link_preview: bool = True) -> Message:
+                      reply: bool = True, link_preview: bool = True,
+                      delete: Optional[int] = None) -> Message:
         """Respond to the message an event caused or to the message that was replied to
 
         Args:
             event: The event of the message
             msg: The message text
             reply: If it should reply to the message that was replied to
+            link_preview: Should the link preview be shown?
+            delete: Seconds until the sent message should be deleted
 
         Returns: None
 
@@ -61,9 +67,15 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
                 reply_to = event.action_message.id
             else:
                 reply_to = (event.reply_to_msg_id or event.message.id)
-            return await event.respond(msg, reply_to=reply_to, link_preview=link_preview)
+            sent_msg: Message = await event.respond(msg, reply_to=reply_to, link_preview=link_preview)
         else:
-            return await event.respond(msg, reply_to=event.message.id, link_preview=link_preview)
+            sent_msg: Message = await event.respond(msg, reply_to=event.message.id, link_preview=link_preview)
+        if delete is not None:
+            # Ugly hack to remove escape characters
+            prefix = ast.literal_eval(f'"{cmd_prefix}"')
+            await self.send_message(sent_msg.chat, f'{prefix}delete [Scheduled deletion]',
+                                    schedule=datetime.timedelta(seconds=delete), reply_to=sent_msg.id)
+        return sent_msg
 
     async def gban(self, uid: Union[int, str], reason: str):
         """Command to gban a user

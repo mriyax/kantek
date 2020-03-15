@@ -79,4 +79,4 @@ async def grenzschutz(event: Union[ChatAction.Event, NewMessage.Event]) -> None:
         ))
         await client.send_message(config.log_channel_id, str(message))
         if verbose:
-            await client.send_message(chat, str(message))
+            await client.respond(event, str(message), reply=False, delete=120)
