@@ -28,7 +28,7 @@ from utils.pluginmgr import PluginManager
 
 logger: logging.Logger = logzero.logger
 
-AUTOMATED_BAN_REASONS = ['Spambot', 'Vollzugsanstalt', 'Kriminalamt']
+AUTOMATED_BAN_REASONS = ['spambot', 'vollzugsanstalt', 'kriminalamt']
 
 
 class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
@@ -95,7 +95,7 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
         user = await self.db.execute(sql, uid, fetch='one')
 
         for ban_reason in AUTOMATED_BAN_REASONS:
-            if user and (ban_reason in user['ban_reason']) and (ban_reason not in reason):
+            if user and ((ban_reason in user[0]['ban_reason'].lower()) or (ban_reason not in reason.lower())):
                 return False
 
         await self.gban_sender.send_message(
@@ -106,7 +106,6 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
                 config.gban_group,
                 message.format(uid=uid, reason=reason))
         await asyncio.sleep(0.5)
-        await self.send_read_acknowledge(config.gban_group, max_id=0, clear_mentions=True)
 
         sql = 'insert into `banlist` (`id`, `ban_reason`) values (%s, %s)'\
               'on duplicate key update `ban_reason` = %s'
@@ -116,6 +115,9 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
         if self.sw and self.sw.permission in [Permission.Admin,
                                               Permission.Root]:
             self.sw.add_ban(int(uid), reason)
+        # Some bots are slow so wait a while before clearing mentions
+        await asyncio.sleep(10)
+        await self.send_read_acknowledge(config.gban_group, max_id=0, clear_mentions=True)
 
         return True
 
