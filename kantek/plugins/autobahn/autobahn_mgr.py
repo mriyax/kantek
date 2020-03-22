@@ -220,7 +220,7 @@ async def _del_item(event: NewMessage.Event, db: MySQLDB) -> MDTeXDocument:
             continue
 
         if hex_type == '0x3':
-            link_creator, chat_id, random_part = await helpers.resolve_invite_link(item)
+            link_creator, chat_id, random_part = await helpers.resolve_invite_link(str(item))
             item = chat_id
 
         existing_one = await collection.get_item(item)
