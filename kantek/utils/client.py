@@ -117,7 +117,7 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
             self.sw.add_ban(int(uid), reason)
         # Some bots are slow so wait a while before clearing mentions
         await asyncio.sleep(10)
-        await self.send_read_acknowledge(config.gban_group, max_id=0, clear_mentions=True)
+        await self.edit_folder(config.gban_group, folder=1)
 
         return True
 
@@ -137,8 +137,8 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
             await self.gban_sender.send_message(
                 config.gban_group,
                 message.format(uid=uid))
-        await asyncio.sleep(0.5)
-        await self.send_read_acknowledge(config.gban_group, max_id=0, clear_mentions=True)
+        await asyncio.sleep(10)
+        await self.edit_folder(config.gban_group, folder=1)
 
         sql = 'delete from `banlist` where `id` = %s'
         await self.db.execute(sql, uid)
