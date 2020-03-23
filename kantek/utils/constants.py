@@ -11,3 +11,5 @@ TELEGRAM_DOMAINS = ['t.me',
                     'contest.dev']
 
 GET_ENTITY_ERRORS = (UsernameNotOccupiedError, UsernameInvalidError, ValueError, InviteHashInvalidError)
+
+SCHEDULE_DELETION_COMMAND = "kantek_scheduled_delete"

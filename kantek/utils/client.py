@@ -3,8 +3,9 @@ import ast
 import asyncio
 import datetime
 import logging
+import re
 import socket
-from typing import Optional, Union
+from typing import Optional, Tuple, Union
 
 import logzero
 import spamwatch
@@ -23,12 +24,14 @@ from yarl import URL
 import config
 from config import cmd_prefix
 from database.mysql import MySQLDB
+from utils.constants import SCHEDULE_DELETION_COMMAND
 from utils.mdtex import FormattedBase, MDTeXDocument, Section
 from utils.pluginmgr import PluginManager
 
 logger: logging.Logger = logzero.logger
 
 AUTOMATED_BAN_REASONS = ['spambot', 'vollzugsanstalt', 'kriminalamt']
+SPAMADD_PATTERN = re.compile(r"(?i)spam adding (?P<count>\d+)\+ members")
 
 
 class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
@@ -71,20 +74,20 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
         else:
             sent_msg: Message = await event.respond(msg, reply_to=event.message.id, link_preview=link_preview)
         if delete is not None:
-            # Ugly hack to remove escape characters
-            prefix = ast.literal_eval(f'"{cmd_prefix}"')
-            await self.send_message(sent_msg.chat, f'{prefix}delete [Scheduled deletion]',
+            # While asyncio.sleep would work, it would stop the function from returning which is annoying
+            await self.send_message(sent_msg.chat, f'{SCHEDULE_DELETION_COMMAND} [Scheduled deletion]',
                                     schedule=datetime.timedelta(seconds=delete), reply_to=sent_msg.id)
         return sent_msg
 
-    async def gban(self, uid: Union[int, str], reason: str):
+    async def gban(self, uid: Union[int, str], reason: str) -> Tuple[bool, str]:
         """Command to gban a user
 
         Args:
             uid: User ID
             reason: Ban reason
 
-        Returns: None
+        Returns:
+            True if ban was successful else false, ban reason
 
         """
         # if the user account is deleted this can be None
@@ -97,6 +100,13 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
         for ban_reason in AUTOMATED_BAN_REASONS:
             if user and ((ban_reason in user[0]['ban_reason'].lower()) or (ban_reason not in reason.lower())):
                 return False
+
+        if user:
+            count = SPAMADD_PATTERN.search(reason)
+            previous_count = SPAMADD_PATTERN.search(user[0]['ban_reason'])
+            if count is not None and previous_count is not None:
+                count = int(count.group('count')) + int(previous_count.group('count'))
+                reason = f"spam adding {count}+ members"
 
         await self.gban_sender.send_message(
             config.gban_group,
@@ -119,7 +129,7 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
         await asyncio.sleep(10)
         await self.edit_folder(config.gban_group, folder=1)
 
-        return True
+        return True, reason
 
     async def ungban(self, uid: Union[int, str]):
         """Command to gban a user
