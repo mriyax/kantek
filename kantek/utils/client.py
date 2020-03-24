@@ -98,8 +98,11 @@ class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
         user = await self.db.execute(sql, uid, fetch='one')
 
         for ban_reason in AUTOMATED_BAN_REASONS:
-            if user and ((ban_reason in user['ban_reason'].lower()) or (ban_reason not in reason.lower())):
-                return False
+            if user and (ban_reason in user['ban_reason'].lower()):
+                if ban_reason == 'kriminalamt':
+                    return False, 'Already banned by kriminalamt'
+                else:
+                    return False, 'Already banned by autobahn'
 
         if user:
             count = SPAMADD_PATTERN.search(reason)
