@@ -102,5 +102,5 @@ async def _cleanup_chat(event, count: bool = False,
                 KeyValueItem(Bold('Deleted Admins'), deleted_admins) if deleted_admins else None))
 
 KantekClient.commands.update({
-    "Cleanup": "Runs a check and remove/ban all deleted accounts in a group \n Note : This does alot of editing when used on a larger group"
+    "cleanup": "Runs a check and remove/ban all deleted accounts in a group \n Note : This does alot of editing when used on a larger group"
 })
