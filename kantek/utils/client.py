@@ -36,6 +36,7 @@ SPAMADD_PATTERN = re.compile(r"(?i)spam adding (?P<count>\d+)\+ members")
 
 class KantekClient(TelegramClient):  # pylint: disable = R0901, W0223
     """Custom telethon client that has the plugin manager as attribute."""
+    commands: dict = {}
     plugin_mgr: Optional[PluginManager] = None
     db: Optional[MySQLDB] = None
     gban_sender: Optional['KantekClient'] = None
