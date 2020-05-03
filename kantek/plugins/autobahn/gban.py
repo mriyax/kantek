@@ -152,3 +152,9 @@ async def ungban(event: NewMessage.Event) -> None:
         await client.respond(event, MDTeXDocument(
             Section(Bold('Un-GBanned Users'),
                     KeyValueItem(Bold('IDs'), Code(', '.join(unbanned_users))))))
+
+        
+KantekClient.commands.update({
+    "gban": "Used for manual Gbans \n Usage : gban <id> <reason> \n Note: If more than 1 work for reason than use double quotes at the start and end"
+})
+        
